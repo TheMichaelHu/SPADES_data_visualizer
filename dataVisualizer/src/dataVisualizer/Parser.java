@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.zip.GZIPInputStream;
 
 public class Parser {
-	final int AGGR_DATA_COUNT = 100;
+	final int AGGR_DATA_COUNT = 20;
 	// List of zipped csvs
 	ArrayList<String> csvs;
 

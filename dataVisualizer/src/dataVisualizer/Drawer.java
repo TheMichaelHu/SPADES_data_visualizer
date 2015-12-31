@@ -14,35 +14,44 @@ import java.util.Collections;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
-public class HeatMapGUI extends JPanel {
+public class Drawer extends JPanel {
 	private static final long serialVersionUID = 1L;
-	private static final int Y_HATCH_INTERVAL = 4000; // .4 m/s (acceleration is
-														// scaled up by 10000 in
-														// Data)
+	
+	// Preferences
+	private static final boolean USING_DAYS_PER_ROW = true;
+	private static final boolean DRAW_X_ACCEL = true;
+	private static final boolean DRAW_Y_ACCEL = false;
+	private static final boolean DRAW_Z_ACCEL = false;
+	
+	// Configs
 	private static final int ACCEL_SCALE = 10000; // acceleration is scaled in
 													// Data for more precise
 													// calculations
+	private static final int Y_HATCH_INTERVAL = (int) (1.2 * ACCEL_SCALE);
+	private static final int DAYS_PER_ROW = 7;
+	
+	// Constants
 	private static final int TEXT_OFFSET = 5;
 	private static final int PREF_W = 1750;
 	private static final int PREF_H = 900;
 	private static final int PADDING = 30;
-	private static final int GRAPH_POINT_WIDTH = 5;
+	private static final int GRAPH_POINT_WIDTH = 1;
 	private static final int HATCH_LENGTH = 5;
 	private static final Color BACKGROUND_COLOR = new Color(24, 24, 24);
 	private static final Color LINE_COLOR = new Color(160, 160, 160);
 
-	private static final Color PHONE_X_COLOR = new Color(255, 96, 0, 20);
-	private static final Color PHONE_Y_COLOR = new Color(255, 166, 0, 20);
-	private static final Color PHONE_Z_COLOR = new Color(255, 60, 0, 20);
-
-	private static final Color WATCH_X_COLOR = new Color(0, 96, 255, 10);
-	private static final Color WATCH_Y_COLOR = new Color(0, 166, 255, 10);
-	private static final Color WATCH_Z_COLOR = new Color(0, 60, 255, 10);
+//	private static final Color PHONE_X_COLOR = new Color(255, 96, 0);
+//	private static final Color PHONE_Y_COLOR = new Color(255, 166, 0);
+//	private static final Color PHONE_Z_COLOR = new Color(255, 60, 0);
+//
+//	private static final Color WATCH_X_COLOR = new Color(0, 96, 255);
+//	private static final Color WATCH_Y_COLOR = new Color(0, 166, 255);
+//	private static final Color WATCH_Z_COLOR = new Color(0, 60, 255);
 	
 	// Default Colors
-	private static final Color X_COLOR = new Color(255, 0, 0, 20);
-	private static final Color Y_COLOR = new Color(255, 128, 0, 20);
-	private static final Color Z_COLOR = new Color(255, 255, 0, 20);
+	private static final Color X_COLOR = new Color(255, 0, 0);
+	private static final Color Y_COLOR = new Color(255, 128, 0);
+	private static final Color Z_COLOR = new Color(255, 255, 0);
 
 	// list of aggregated phone accelerometer data ordered by time
 	private ArrayList<Data> phoneData;
@@ -51,7 +60,7 @@ public class HeatMapGUI extends JPanel {
 	private double minX, maxX, minY, maxY, scaleX;
 	private boolean isPhoneData, isWatchData;
 
-	public HeatMapGUI(ArrayList<Data> phoneData, ArrayList<Data> watchData) {
+	public Drawer(ArrayList<Data> phoneData, ArrayList<Data> watchData) {
 		this.phoneData = phoneData;
 		this.watchData = watchData;
 		isPhoneData = phoneData != null && phoneData.size() > 0;
@@ -112,6 +121,9 @@ public class HeatMapGUI extends JPanel {
 		}
 
 		this.minX += .001; // stupid lazy fix for stupid time bug
+		if(USING_DAYS_PER_ROW) {
+			this.maxX = this.minX + DAYS_PER_ROW;
+		}
 
 		this.scaleX = (PREF_W - 2 * PADDING) / (this.maxX - this.minX);
 	}
@@ -202,24 +214,44 @@ public class HeatMapGUI extends JPanel {
 		}
 
 		// and for x axis
-		for (int i = 0; i < (int) (maxX - minX + 1); i++) {
-			int x0 = scalePoint((int) minX + i, 0, yEnd - yStart).x;
-			int xText = x0
-					+ (x0 - scalePoint((int) minX + i - 1, 0, yEnd - yStart).x)
-					/ 2;
-			int y0 = originY + HATCH_LENGTH;
-			int y1 = originY - HATCH_LENGTH;
-			g2.drawLine(x0, y0, x0, y1);
-			drawCenterString(g2, "Day " + (i + 1), xText, originY);
+		if (USING_DAYS_PER_ROW) {
+			for (int i = 0; i < DAYS_PER_ROW; i++) {
+				int x0 = scalePoint((int) minX + i, 0, yEnd - yStart).x;
+				int xText = x0
+						+ (x0 - scalePoint((int) minX + i - 1, 0, yEnd - yStart).x)
+						/ 2;
+				int y0 = originY + HATCH_LENGTH;
+				int y1 = originY - HATCH_LENGTH;
+				g2.drawLine(x0, y0, x0, y1);
+				drawCenterString(g2, "Day " + (i + 1), xText, originY);
+			}
+			
+		} else {
+			for (int i = 0; i < (int) (maxX - minX + 1); i++) {
+				int x0 = scalePoint((int) minX + i, 0, yEnd - yStart).x;
+				int xText = x0
+						+ (x0 - scalePoint((int) minX + i - 1, 0, yEnd - yStart).x)
+						/ 2;
+				int y0 = originY + HATCH_LENGTH;
+				int y1 = originY - HATCH_LENGTH;
+				g2.drawLine(x0, y0, x0, y1);
+				drawCenterString(g2, "Day " + (i + 1), xText, originY);
+			}
 		}
 
 		graphPoints = dataToPoints(data, yEnd - yStart);
-		g2.setColor(xc);
-		drawPoints(graphPoints.get(0), g2, yStart);
-		g2.setColor(yc);
-		drawPoints(graphPoints.get(1), g2, yStart);
-		g2.setColor(zc);
-		drawPoints(graphPoints.get(2), g2, yStart);
+		if(DRAW_X_ACCEL) {
+			g2.setColor(xc);
+			drawPoints(graphPoints.get(0), g2, yStart);
+		}
+		if(DRAW_Y_ACCEL) {
+			g2.setColor(yc);
+			drawPoints(graphPoints.get(1), g2, yStart);
+		}
+		if(DRAW_Z_ACCEL) {
+			g2.setColor(zc);
+			drawPoints(graphPoints.get(2), g2, yStart);
+		}
 	}
 
 	private void drawCenterString(Graphics2D g2, String str, int x, int y) {
