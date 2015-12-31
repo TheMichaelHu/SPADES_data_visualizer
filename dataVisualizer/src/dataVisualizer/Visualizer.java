@@ -7,15 +7,19 @@ import javax.imageio.ImageIO;
 
 
 public class Visualizer {
-	public static void main(String[] args) {
-		Parser par = new Parser("/home/michael/Desktop/SPADESStudy/p001/MasterSynced/");
-		Drawer graph = new Drawer(par.getPhoneData(), par.getWatchData());
+	public static void main(String[] args) throws IOException {
+		// Directory where data can be found
+		String inputPath = "/home/michael/Desktop/SPADESTEST_07/MasterSynced/2015";
+		// File to output visualization to
+		String outputPath = "/home/michael/Desktop/combined.png";
 		
-		try {
-			ImageIO.write(graph.getImages(3), "PNG", new File("/home/michael/Desktop/combined.png"));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		// Parse csvs found at input path (includes sub directories)
+		Parser par = new Parser(inputPath);
+		// Feed parsed data to Drawer
+//		Drawer graph = new Drawer(par.getPhoneData(), par.getWatchData());
+		Drawer graph = new Drawer(par.getPhoneData(), null);
+		
+		// Output visualization to output path
+		ImageIO.write(graph.getImages(13), "PNG", new File(outputPath));
 	}
 }

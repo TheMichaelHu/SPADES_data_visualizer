@@ -21,8 +21,8 @@ public class Drawer extends JPanel {
 	// Preferences
 	private static final boolean FIXED_DAYS_PER_ROW = true;
 	private static final boolean DRAW_X_ACCEL = true;
-	private static final boolean DRAW_Y_ACCEL = false;
-	private static final boolean DRAW_Z_ACCEL = false;
+	private static final boolean DRAW_Y_ACCEL = true;
+	private static final boolean DRAW_Z_ACCEL = true;
 
 	// Configs
 	private static final int ACCEL_SCALE = 10000; // acceleration is scaled in
@@ -129,7 +129,7 @@ public class Drawer extends JPanel {
 			this.maxX = watchMaxX;
 		}
 
-		this.minX += .001; // stupid lazy fix for stupid time bug
+		this.minX = Math.floor(this.minX);
 		if (FIXED_DAYS_PER_ROW) {
 			this.maxX = this.minX + DAYS_PER_ROW;
 		}
@@ -228,9 +228,9 @@ public class Drawer extends JPanel {
 		// and for x axis
 		if (FIXED_DAYS_PER_ROW) {
 			for (int i = 0; i < DAYS_PER_ROW; i++) {
-				int x0 = scalePoint((int) minX + i, 0, yEnd - yStart).x;
+				int x0 = scalePoint((int) (minX + i), 0, yEnd - yStart).x;
 				int xText = x0
-						+ (x0 - scalePoint((int) minX + i - 1, 0, yEnd - yStart).x)
+						+ (x0 - scalePoint((int) (minX + i - 1), 0, yEnd - yStart).x)
 						/ 2;
 				int y0 = originY + HATCH_LENGTH;
 				int y1 = originY - HATCH_LENGTH;
