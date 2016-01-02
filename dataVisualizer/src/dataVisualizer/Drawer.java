@@ -10,7 +10,6 @@ import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Collections;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -19,36 +18,35 @@ public class Drawer extends JPanel {
 	private static final long serialVersionUID = 1L;
 
 	// Preferences
-	private static final boolean FIXED_DAYS_PER_ROW = true;
-	private static final boolean DRAW_X_ACCEL = true;
+	private static final int WIDTH = 3000;
+	private static final int HEIGHT = 500;
+	
+	private static final boolean DRAW_X_ACCEL = false;
 	private static final boolean DRAW_Y_ACCEL = true;
-	private static final boolean DRAW_Z_ACCEL = true;
+	private static final boolean DRAW_Z_ACCEL = false;
 
 	// Configs
 	private static final int ACCEL_SCALE = 10000; // acceleration is scaled in
 													// Data for more precise
 													// calculations
-	private static final int Y_HATCH_INTERVAL = (int) (1.2 * ACCEL_SCALE);
-	private static final int DAYS_PER_ROW = 7; // only matters if
-												// FIXED_DAYS_PER_ROW is true
+	private static final int Y_HATCH_INTERVAL = (int) (1 * ACCEL_SCALE);
+	private static final int DAYS_PER_ROW = 7;
 
 	// Constants
 	private static final int TEXT_OFFSET = 5;
-	private static final int PREF_W = 1750;
-	private static final int PREF_H = 900;
 	private static final int PADDING = 30;
 	private static final int GRAPH_POINT_WIDTH = 1;
 	private static final int HATCH_LENGTH = 5;
 	private static final Color BACKGROUND_COLOR = new Color(24, 24, 24);
 	private static final Color LINE_COLOR = new Color(160, 160, 160);
 
-	// private static final Color PHONE_X_COLOR = new Color(255, 96, 0);
-	// private static final Color PHONE_Y_COLOR = new Color(255, 166, 0);
-	// private static final Color PHONE_Z_COLOR = new Color(255, 60, 0);
-	//
-	// private static final Color WATCH_X_COLOR = new Color(0, 96, 255);
-	// private static final Color WATCH_Y_COLOR = new Color(0, 166, 255);
-	// private static final Color WATCH_Z_COLOR = new Color(0, 60, 255);
+	 private static final Color PHONE_X_COLOR = new Color(255, 96, 0);
+	 private static final Color PHONE_Y_COLOR = new Color(255, 166, 0);
+	 private static final Color PHONE_Z_COLOR = new Color(255, 60, 0);
+	
+	 private static final Color WATCH_X_COLOR = new Color(0, 96, 255);
+	 private static final Color WATCH_Y_COLOR = new Color(0, 166, 255);
+	 private static final Color WATCH_Z_COLOR = new Color(0, 60, 255);
 
 	// Default Colors
 	private static final Color X_COLOR = new Color(255, 0, 0);
@@ -59,7 +57,7 @@ public class Drawer extends JPanel {
 	private ArrayList<Data> phoneData;
 	// list of aggregated watch accelerometer data ordered by time
 	private ArrayList<Data> watchData;
-	private double minX, maxX, minY, maxY, scaleX;
+	private double minX, maxX, minY, maxY;
 	private boolean isPhoneData, isWatchData;
 	private int startDay;
 
@@ -78,11 +76,12 @@ public class Drawer extends JPanel {
 	}
 
 	private void calcRange() {
-		double phoneMaxY, phoneMinY, watchMaxY, watchMinY, phoneMaxX, phoneMinX, watchMaxX, watchMinX;
-		phoneMaxY = phoneMinY = watchMaxY = watchMinY = phoneMaxX = phoneMinX = watchMaxX = watchMinX = 0;
+		double phoneMaxY, phoneMinY, watchMaxY, watchMinY, phoneMinX, watchMinX;
+		phoneMaxY = watchMaxY = Integer.MIN_VALUE;
+		phoneMinY = watchMinY = phoneMinX = watchMinX = Integer.MAX_VALUE;
 
 		if (isPhoneData) {
-			Collections.sort(this.phoneData);
+			phoneMinX = this.phoneData.get(0).getTime();
 			for (Data d : phoneData) {
 				phoneMaxY = Math.max(d.x_a, phoneMaxY);
 				phoneMinY = Math.min(d.x_a, phoneMinY);
@@ -90,10 +89,11 @@ public class Drawer extends JPanel {
 				phoneMinY = Math.min(d.y_a, phoneMinY);
 				phoneMaxY = Math.max(d.z_a, phoneMaxY);
 				phoneMinY = Math.min(d.z_a, phoneMinY);
+				phoneMinX = Math.min(d.getTime(), phoneMinX);
 			}
 		}
 		if (isWatchData) {
-			Collections.sort(this.watchData);
+			watchMinX = this.watchData.get(0).getTime();
 			for (Data d : watchData) {
 				watchMaxY = Math.max(d.x_a, watchMaxY);
 				watchMinY = Math.min(d.x_a, watchMinY);
@@ -101,43 +101,20 @@ public class Drawer extends JPanel {
 				watchMinY = Math.min(d.y_a, watchMinY);
 				watchMaxY = Math.max(d.z_a, watchMaxY);
 				watchMinY = Math.min(d.z_a, watchMinY);
+				watchMinX = Math.min(d.getTime(), watchMinX);
 			}
 		}
 
 		this.minY = Math.min(phoneMinY, watchMinY);
 		this.maxY = Math.max(phoneMaxY, watchMaxY);
-
-		if (isPhoneData && isWatchData) {
-			phoneMinX = phoneData.get(0).getTime();
-			watchMinX = watchData.get(0).getTime();
-			phoneMaxX = phoneData.get(phoneData.size() - 1).getTime();
-			watchMaxX = watchData.get(watchData.size() - 1).getTime();
-
-			this.minX = Math.min(phoneMinX, watchMinX);
-			this.maxX = Math.max(phoneMaxX, watchMaxX);
-		} else if (isPhoneData) {
-			phoneMinX = phoneData.get(0).getTime();
-			phoneMaxX = phoneData.get(phoneData.size() - 1).getTime();
-
-			this.minX = phoneMinX;
-			this.maxX = phoneMaxX;
-		} else if (isWatchData) {
-			watchMinX = watchData.get(0).getTime();
-			watchMaxX = watchData.get(watchData.size() - 1).getTime();
-
-			this.minX = watchMinX;
-			this.maxX = watchMaxX;
-		}
+		this.minX = Math.min(phoneMinX, watchMinX);
 
 		this.minX = Math.floor(this.minX);
-		if (FIXED_DAYS_PER_ROW) {
-			this.maxX = this.minX + DAYS_PER_ROW;
-		}
-
-		this.scaleX = (PREF_W - 2 * PADDING) / (this.maxX - this.minX);
+		this.maxX = this.minX + DAYS_PER_ROW;
 	}
 
-	private Point scalePoint(double x, double y, int height) {
+	private Point scalePoint(double x, double y, int width, int height) {
+		double scaleX = (width - 2 * PADDING) / (this.maxX - this.minX);
 		double scaleY = (height - 2 * PADDING) / (this.maxY - this.minY);
 		int scaledX = PADDING + (int) ((x - this.minX) * scaleX);
 		int scaledY = (height - PADDING) - (int) ((y - this.minY) * scaleY);
@@ -146,13 +123,9 @@ public class Drawer extends JPanel {
 
 	@Override
 	protected void paintComponent(Graphics g) {
-		int start = 10;
-		int increment = PREF_H / 2;
+		int start = 0;
+		int increment = (WIDTH - PADDING) / 2;
 		int end = increment;
-
-		// if(isPhoneData != isWatchData) {
-		// end = PREF_H;
-		// }
 
 		super.paintComponent(g);
 		Graphics2D g2 = (Graphics2D) g;
@@ -161,43 +134,43 @@ public class Drawer extends JPanel {
 
 		if (this.isPhoneData) {
 			g2.setColor(LINE_COLOR);
-			drawCenterString(g2, "Phone Data: Day " + startDay + " to Day "
-					+ (startDay + 6), PREF_W / 2, start);
-			drawPlot(g2, this.phoneData, start, end);
-			start = end;
-			end += increment;
+			drawCenterString(g2, "Phone Data: Week " + (startDay / 7 + 1), start + (increment / 2), 0);
+			drawPlot(g2, this.phoneData, PHONE_X_COLOR, PHONE_Y_COLOR, PHONE_Z_COLOR, start, end, 10, HEIGHT);
 		}
+		
+		start = end + PADDING/2;
+		end = start + increment;
+		
 		if (this.isWatchData) {
 			g2.setColor(LINE_COLOR);
-			drawCenterString(g2, "Watch Data: Day " + startDay + " to Day "
-					+ (startDay + 6), PREF_W / 2, start);
-			drawPlot(g2, this.watchData, start, end);
-			start = end;
-			end += increment;
+			drawCenterString(g2, "Watch Data: Week " + (startDay / 7 + 1), start + (increment / 2), 0);
+			drawPlot(g2, this.watchData, WATCH_X_COLOR, WATCH_Y_COLOR, WATCH_Z_COLOR, start, end, 10, HEIGHT);
 		}
 	}
 
-	private void drawPlot(Graphics2D g2, ArrayList<Data> data, int yStart,
-			int yEnd) {
-		drawPlot(g2, data, X_COLOR, Y_COLOR, Z_COLOR, yStart, yEnd);
+	@SuppressWarnings("unused")
+	private void drawPlot(Graphics2D g2, ArrayList<Data> data, int xStart,
+			int xEnd, int yStart, int yEnd) {
+		drawPlot(g2, data, X_COLOR, Y_COLOR, Z_COLOR, xStart, xEnd, yStart, yEnd);
 	}
 
 	private void drawPlot(Graphics2D g2, ArrayList<Data> data, Color xc,
-			Color yc, Color zc, int yStart, int yEnd) {
-		int originY = this.scalePoint(0, 0, yEnd - yStart).y + yStart;
+			Color yc, Color zc, int xStart, int xEnd, int yStart, int yEnd) {
+		int originX = xStart + PADDING;
+		int originY = this.scalePoint(0, 0, xEnd - xStart, yEnd - yStart).y + yStart;
 		ArrayList<ArrayList<Point>> graphPoints;
 
 		// draw x(time) and y(acceleration) axis
 		g2.setColor(LINE_COLOR);
 		g2.setStroke(new BasicStroke(2));
-		g2.drawLine(PADDING, yEnd - PADDING, PADDING, PADDING + yStart);
-		g2.drawLine(PADDING, originY, PREF_W - PADDING, originY);
+		g2.drawLine(originX, yEnd - PADDING, originX, PADDING + yStart);
+		g2.drawLine(originX, originY, xEnd - PADDING, originY);
 
 		// draw hatch marks for positive y axis.
 		for (int i = 0; i < (int) (maxY); i++) {
-			int x0 = PADDING - HATCH_LENGTH;
-			int x1 = PADDING + HATCH_LENGTH;
-			int y0 = scalePoint(0, i * Y_HATCH_INTERVAL, yEnd - yStart).y
+			int x0 = originX - HATCH_LENGTH;
+			int x1 = originX + HATCH_LENGTH;
+			int y0 = scalePoint(0, i * Y_HATCH_INTERVAL, xEnd - xStart, yEnd - yStart).y
 					+ yStart;
 			if (y0 > PADDING + yStart) {
 				g2.drawLine(x0, y0, x1, y0);
@@ -205,15 +178,15 @@ public class Drawer extends JPanel {
 						g2,
 						String.format("%.1f", ((double) Y_HATCH_INTERVAL
 								/ ACCEL_SCALE * i))
-								+ " m/s", PADDING, y0);
+								+ " m/s", originX, y0);
 			}
 		}
 
 		// draw hatch marks for negative y axis.
 		for (int i = 0; i > (int) (minY); i--) {
-			int x0 = PADDING - HATCH_LENGTH;
-			int x1 = PADDING + HATCH_LENGTH;
-			int y0 = scalePoint(0, i * Y_HATCH_INTERVAL, yEnd - yStart).y
+			int x0 = originX - HATCH_LENGTH;
+			int x1 = originX + HATCH_LENGTH;
+			int y0 = scalePoint(0, i * Y_HATCH_INTERVAL, xEnd - xStart, yEnd - yStart).y
 					+ yStart;
 			if (y0 < yEnd - PADDING - TEXT_OFFSET) {
 				g2.drawLine(x0, y0, x1, y0);
@@ -221,48 +194,34 @@ public class Drawer extends JPanel {
 						g2,
 						String.format("%.1f", ((double) Y_HATCH_INTERVAL
 								/ ACCEL_SCALE * i))
-								+ " m/s", PADDING, y0);
+								+ " m/s", originX, y0);
 			}
 		}
 
 		// and for x axis
-		if (FIXED_DAYS_PER_ROW) {
-			for (int i = 0; i < DAYS_PER_ROW; i++) {
-				int x0 = scalePoint((int) (minX + i), 0, yEnd - yStart).x;
-				int xText = x0
-						+ (x0 - scalePoint((int) (minX + i - 1), 0, yEnd - yStart).x)
-						/ 2;
-				int y0 = originY + HATCH_LENGTH;
-				int y1 = originY - HATCH_LENGTH;
-				g2.drawLine(x0, y0, x0, y1);
-				drawCenterString(g2, "Day " + (i + startDay), xText, originY);
-			}
-
-		} else {
-			for (int i = 0; i < (int) (maxX - minX + 1); i++) {
-				int x0 = scalePoint((int) minX + i, 0, yEnd - yStart).x;
-				int xText = x0
-						+ (x0 - scalePoint((int) minX + i - 1, 0, yEnd - yStart).x)
-						/ 2;
-				int y0 = originY + HATCH_LENGTH;
-				int y1 = originY - HATCH_LENGTH;
-				g2.drawLine(x0, y0, x0, y1);
-				drawCenterString(g2, "Day " + (i + startDay), xText, originY);
-			}
+		for (int i = 0; i < DAYS_PER_ROW; i++) {
+			int x0 = scalePoint((int) (minX + i), 0, xEnd - xStart, yEnd - yStart).x + xStart;
+			int xText = x0
+					+ (x0 - (scalePoint(minX + i - 1, 0, xEnd - xStart, yEnd - yStart).x + xStart))
+					/ 2;
+			int y0 = originY + HATCH_LENGTH;
+			int y1 = originY - HATCH_LENGTH;
+			g2.drawLine(x0, y0, x0, y1);
+			drawCenterString(g2, "Day " + (i + startDay), xText, originY);
 		}
 
-		graphPoints = dataToPoints(data, yEnd - yStart);
+		graphPoints = dataToPoints(data, xEnd - xStart, yEnd - yStart);
 		if (DRAW_X_ACCEL) {
 			g2.setColor(xc);
-			drawPoints(graphPoints.get(0), g2, yStart);
+			drawPoints(graphPoints.get(0), g2, xStart, yStart);
 		}
 		if (DRAW_Y_ACCEL) {
 			g2.setColor(yc);
-			drawPoints(graphPoints.get(1), g2, yStart);
+			drawPoints(graphPoints.get(1), g2, xStart, yStart);
 		}
 		if (DRAW_Z_ACCEL) {
 			g2.setColor(zc);
-			drawPoints(graphPoints.get(2), g2, yStart);
+			drawPoints(graphPoints.get(2), g2, xStart, yStart);
 		}
 	}
 
@@ -273,7 +232,7 @@ public class Drawer extends JPanel {
 		g2.drawString(str, x - textWidth / 2, y + TEXT_OFFSET + textHeight / 2);
 	}
 
-	private ArrayList<ArrayList<Point>> dataToPoints(ArrayList<Data> data,
+	private ArrayList<ArrayList<Point>> dataToPoints(ArrayList<Data> data, int width,
 			int height) {
 
 		if (data.size() == 0) {
@@ -288,39 +247,39 @@ public class Drawer extends JPanel {
 			double x1Shifted = data.get(i).getTime() - (startDay - 1);
 			double y1 = data.get(i).getXAccel();
 			if ((x1 - this.minX + 1 >= startDay && x1 - this.minX + 1 < startDay + 7)) {
-				points.add(this.scalePoint(x1Shifted, y1, height));
+				points.add(this.scalePoint(x1Shifted, y1, width, height));
 			}
 		}
 		xyzPoints.add(points);
-		points.clear();
+		points = new ArrayList<Point>();
 
 		for (int i = 0; i < data.size(); i++) {
 			double x1 = data.get(i).getTime();
 			double x1Shifted = data.get(i).getTime() - (startDay - 1);
 			double y1 = data.get(i).getYAccel();
 			if ((x1 - this.minX + 1 >= startDay && x1 - this.minX + 1 < startDay + 7)) {
-				points.add(this.scalePoint(x1Shifted, y1, height));
+				points.add(this.scalePoint(x1Shifted, y1, width, height));
 			}
 		}
 		xyzPoints.add(points);
-		points.clear();
+		points = new ArrayList<Point>();
 
 		for (int i = 0; i < data.size(); i++) {
 			double x1 = data.get(i).getTime();
 			double x1Shifted = data.get(i).getTime() - (startDay - 1);
 			double y1 = data.get(i).getZAccel();
 			if ((x1 - this.minX + 1 >= startDay && x1 - this.minX + 1 < startDay + 7)) {
-				points.add(this.scalePoint(x1Shifted, y1, height));
+				points.add(this.scalePoint(x1Shifted, y1, width, height));
 			}
 		}
 		xyzPoints.add(points);
 		return xyzPoints;
 	}
 
-	private void drawPoints(ArrayList<Point> points, Graphics2D g2, int offset) {
+	private void drawPoints(ArrayList<Point> points, Graphics2D g2, int xOffset, int yOffset) {
 		for (int i = 0; i < points.size(); i++) {
-			int x = points.get(i).x - GRAPH_POINT_WIDTH / 2;
-			int y = points.get(i).y - GRAPH_POINT_WIDTH / 2 + offset;
+			int x = points.get(i).x - GRAPH_POINT_WIDTH / 2 + xOffset;
+			int y = points.get(i).y - GRAPH_POINT_WIDTH / 2 + yOffset;
 
 			int ovalW = GRAPH_POINT_WIDTH;
 			int ovalH = GRAPH_POINT_WIDTH;
@@ -330,7 +289,7 @@ public class Drawer extends JPanel {
 
 	@Override
 	public Dimension getPreferredSize() {
-		return new Dimension(PREF_W, PREF_H);
+		return new Dimension(WIDTH, HEIGHT);
 	}
 
 	// Creates a JFrame and draws the graph on it
@@ -346,8 +305,8 @@ public class Drawer extends JPanel {
 
 	// Returns a bufferedimage containing the graphs
 	private BufferedImage drawImage() {
-		int h = this.isPhoneData != this.isWatchData ? PREF_H / 2 : PREF_H;
-		BufferedImage img = new BufferedImage(PREF_W, h,
+		int h = this.isPhoneData != this.isWatchData ? HEIGHT / 2 : HEIGHT;
+		BufferedImage img = new BufferedImage(WIDTH, h,
 				BufferedImage.TYPE_INT_RGB);
 		Graphics2D g = img.createGraphics();
 		this.paintComponent(g);
@@ -356,11 +315,13 @@ public class Drawer extends JPanel {
 	
 	public BufferedImage getImages(int weeks) {
 		BufferedImage img = this.drawImage();
+		System.out.println("Week 1 drawn!");
 		int temp = startDay;
 		
 		for(int i = 1; i < weeks; i++) {
 			this.startDay += 7;
 			img = this.drawOnImage(img);
+			System.out.println("Week " + (this.startDay/7 + 1) + " drawn!");
 		}
 		this.startDay = temp;
 		return img;
