@@ -19,6 +19,8 @@ class Utils {
 
     static String TARGET_DIR = "[Insert default file]";
 
+    static final String IMAGE_EXT = "png";
+
     static final boolean USE_DYNAMIC_HEIGHT = false;
 
     static void updateDirs() {

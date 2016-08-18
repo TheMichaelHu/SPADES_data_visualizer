@@ -16,19 +16,14 @@ class Drawer extends JPanel {
 	private static final long serialVersionUID = 1L;
 
 	// Preferences
-	private static final int WIDTH = Utils.WIDTH;
-	private static final int HEIGHT = Utils.HEIGHT;
-
-	// Configs
-	private static final double Y_HATCH_INTERVAL = .5;
+	private final int WIDTH = Utils.WIDTH;
+	private final int HEIGHT = Utils.HEIGHT;
 
 	// Constants
-	private static final int TEXT_OFFSET = 5;
-	private static final int PADDING = 30;
-	private static final int GRAPH_POINT_WIDTH = 4;
-	private static final int HATCH_LENGTH = 5;
-	private static final Color BACKGROUND_COLOR = new Color(255, 255, 255);
-	private static final Color LINE_COLOR = new Color(0, 0, 0);
+	private final int PADDING = 30;
+	private final int GRAPH_POINT_WIDTH = 4;
+	private final Color BACKGROUND_COLOR = new Color(255, 255, 255);
+	private final Color LINE_COLOR = new Color(0, 0, 0);
 
 	private long minX, maxX;
 	private int currentDay;
@@ -64,7 +59,7 @@ class Drawer extends JPanel {
 
 	@Override
 	protected void paintComponent(Graphics g) {
-		int start = 0;
+		int start = PADDING;
 		int end = (WIDTH - PADDING);
 
 		super.paintComponent(g);
@@ -80,6 +75,8 @@ class Drawer extends JPanel {
 	}
 
 	private void drawPlot(Graphics2D g2, int xStart, int xEnd, int yStart, int yEnd) {
+		int hatchLength = 5;
+		double yHatchInterval = .5;
 		int xRange = xEnd - xStart;
 		int yRange = yEnd - yStart;
 		int originX = xStart + PADDING;
@@ -93,27 +90,29 @@ class Drawer extends JPanel {
 		g2.drawLine(originX, originY, xEnd - PADDING, originY);
 
 		// draw hatch marks for positive y axis.
-		for (int i = 0; i < Utils.MAX_Y/Y_HATCH_INTERVAL; i++) {
-			int x0 = originX - HATCH_LENGTH;
-			int x1 = originX + HATCH_LENGTH;
-			int y0 = scalePoint(0, i * Y_HATCH_INTERVAL, xRange, yRange).y + yStart;
+		for (int i = 0; i < Utils.MAX_Y/yHatchInterval; i++) {
+			int x0 = originX - hatchLength;
+			int x1 = originX + hatchLength;
+			int y0 = scalePoint(0, i * yHatchInterval, xRange, yRange).y + yStart;
 			if (y0 > PADDING + yStart) {
 				g2.drawLine(x0, y0, x1, y0);
-				drawCenterString(g2, String.format("%.1f", Y_HATCH_INTERVAL * i), originX, y0);
+				drawCenterString(g2, String.format("%.1f", yHatchInterval * i), originX, y0);
 			}
 		}
 
 		// and for x axis
 		for (int i = 0; i < 24; i++) {
 			int x0 = scalePoint(minX + (i*60*60*1000), 0, xRange, yRange).x + xStart;
-			int y0 = originY + HATCH_LENGTH;
-			int y1 = originY - HATCH_LENGTH;
+			int y0 = originY + hatchLength;
+			int y1 = originY - hatchLength;
 
 			g2.drawLine(x0, y0, x0, y1);
 			drawCenterString(g2, ""+i, x0, originY);
 		}
 
 		// draw data
+		long currentTime = Visualizer.data.get(this.currentDay).date;
+
 		graphPoints = dataToPoints(scaleBatteryData(Visualizer.battery.get(this.currentDay)), xRange, yRange);
 		drawArea(graphPoints, g2, xStart, yStart, Visualizer.colors.get("phone battery").color);
 
@@ -137,37 +136,68 @@ class Drawer extends JPanel {
 		g2.setStroke(dashed);
 
 		for(Event event : Visualizer.calls) {
-			int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
-			g2.setColor( Visualizer.colors.get("call").color);
-			g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
+			if(currentTime < event.fromDate && event.fromDate < currentTime + 24 * 60 * 60 *1000) {
+				int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
+				g2.setColor(Visualizer.colors.get("call").color);
+				g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
+			}
 		}
 
 		for(Event event : Visualizer.texts) {
-			int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
-			g2.setColor( Visualizer.colors.get("text").color);
-			g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
+			if(currentTime < event.fromDate && event.fromDate < currentTime + 24 * 60 * 60 *1000) {
+				int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
+				g2.setColor(Visualizer.colors.get("text").color);
+				g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
+			}
 		}
 
 		for(Event annotation : Visualizer.annotations) {
 			if(!Arrays.asList(Utils.IGNORED_ANNOTATIONS).contains(annotation.text.toLowerCase().trim())) {
-				int x = this.scalePoint(annotation.fromDate, 0, xRange, yRange).x;
-				g2.setColor(Color.gray);
-				drawCenterString(g2, annotation.text, x + xStart + 3, annotation.getLabelHeight() + yStart + 3);
-				g2.setColor(LINE_COLOR);
-				drawCenterString(g2, annotation.text, x + xStart, annotation.getLabelHeight() + yStart);
+				if(currentTime < annotation.fromDate && annotation.fromDate < currentTime + 24 * 60 * 60 *1000) {
+					int x = this.scalePoint(annotation.fromDate, 0, xRange, yRange).x;
+					g2.setColor(LINE_COLOR);
+					drawCenterString(g2, annotation.text, x + xStart, annotation.getLabelHeight() + yStart);
+				}
 			}
 		}
 
 		for(Prompt prompt : Visualizer.prompts) {
-			int x = this.scalePoint(prompt.date, 0, xRange, yRange).x;
-			if(prompt.completed) {
-				g2.setColor(Visualizer.colors.get("answered prompt").color);
-				drawCenterString(g2, prompt.posture, x + xStart, PADDING + yStart);
-			} else {
-				g2.setColor(Visualizer.colors.get("ignored prompt").color);
-				drawCenterString(g2, prompt.activity, x + xStart, PADDING + yStart);
+			if(currentTime < prompt.date && prompt.date < currentTime + 24 * 60 * 60 *1000) {
+				int x = this.scalePoint(prompt.date, 0, xRange, yRange).x + xStart;
+				if (prompt.completed) {
+					g2.setColor(Visualizer.colors.get("answered prompt").color);
+					drawCenterString(g2, prompt.posture, x, PADDING + yStart);
+				} else {
+					g2.setColor(Visualizer.colors.get("ignored prompt").color);
+					drawCenterString(g2, prompt.activity, x, PADDING + yStart);
+				}
+				g2.drawLine(x, originY, x, PADDING + yStart);
 			}
-			g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
+		}
+
+		count = 0;
+		for(Event session : Visualizer.sessions) {
+			int fromX = this.scalePoint(session.fromDate, 0, xRange, yRange).x + xStart;
+			int toX = this.scalePoint(session.toDate, 0, xRange, yRange).x + xStart;
+
+			if(session.fromDate < currentTime) {
+				fromX = this.scalePoint(Visualizer.data.get(this.currentDay).date, 0, xRange, yRange).x + xStart;
+			}
+			if(session.toDate > currentTime + 24 * 60 * 60 * 1000) {
+				toX = this.scalePoint(Visualizer.data.get(this.currentDay).date + 24 * 60 * 60 * 1000, 0,
+						xRange, yRange).x + xStart;
+			}
+
+			if(fromX < toX) {
+				Polygon p = new Polygon();
+				p.addPoint(fromX, PADDING + yStart);
+				p.addPoint(toX, PADDING + yStart);
+				p.addPoint(toX, originY);
+				p.addPoint(fromX, originY);
+
+				g2.setColor(giveColor(session.text, (count++) + 51, .5, LegendType.SESSION));
+				g2.fill(p);
+			}
 		}
 	}
 
@@ -176,9 +206,17 @@ class Drawer extends JPanel {
 		for (int i = 1; i < points.size(); i++) {
 			Point point0 = points.get(i-1);
 			Point point1 = points.get(i);
-			g2.setStroke(new BasicStroke(GRAPH_POINT_WIDTH));
-			g2.drawLine(point0.x + xOffset, point0.y + yOffset,
-					point1.x + xOffset, point1.y + yOffset);
+
+			int scaledChunk = scalePoint(Visualizer.data.get(this.currentDay).date +
+					(long)(Utils.CHUNK * 60 * 60 * 1000), 0, (WIDTH - 2 * PADDING), HEIGHT).x -
+					scalePoint(Visualizer.data.get(this.currentDay).date, 0, (WIDTH - 2 * PADDING), HEIGHT).x;
+
+			// chunk is in hours, who designed this?
+			if(point1.x - point0.x <= scaledChunk) {
+				g2.setStroke(new BasicStroke(GRAPH_POINT_WIDTH));
+				g2.drawLine(point0.x + xOffset, point0.y + yOffset,
+						point1.x + xOffset, point1.y + yOffset);
+			}
 		}
 	}
 
@@ -200,10 +238,11 @@ class Drawer extends JPanel {
 	}
 
 	private void drawCenterString(Graphics2D g2, String str, int x, int y) {
+		int textOffset = 5;
 		FontMetrics fm = g2.getFontMetrics();
 		int textWidth = fm.stringWidth(str);
 		int textHeight = fm.getHeight() + fm.getAscent();
-		g2.drawString(str, x - textWidth / 2, y + TEXT_OFFSET + textHeight / 2);
+		g2.drawString(str, x - textWidth / 2, y + textOffset + textHeight / 2);
 	}
 
 	private ArrayList<Point> dataToPoints(Day data, int width, int height) {
@@ -247,54 +286,63 @@ class Drawer extends JPanel {
 		return new Dimension(WIDTH, HEIGHT);
 	}
 
-	// Creates a JFrame and draws the graph on it
-	void drawInFrame() {
-		this.setBackground(BACKGROUND_COLOR);
-		JFrame frame = new JFrame(Utils.TITLE);
-		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-		frame.getContentPane().add(this);
-		frame.pack();
-		frame.setLocationByPlatform(true);
-		frame.setVisible(true);
-	}
-
 	// Returns a bufferedimage containing the graphs
 	private BufferedImage drawImage() {
 		BufferedImage img = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
-		Graphics2D g = img.createGraphics();
-		g.setColor(BACKGROUND_COLOR);
-		g.fillRect(0, 0, WIDTH, HEIGHT);
-		this.paintComponent(g);
+		Graphics2D g2 = img.createGraphics();
+		g2.setBackground(BACKGROUND_COLOR);
+		g2.clearRect(0, 0, WIDTH, HEIGHT);
+		this.paintComponent(g2);
 		return img;
 	}
+
+	private BufferedImage drawLegend() {
+		int legendWidth = WIDTH/3;
+		int yStart = 10;
+		int padding = 30;
+		int legendHeight = 0;
+		BufferedImage img = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
+		Graphics2D g2 = img.createGraphics();
+		g2.setBackground(BACKGROUND_COLOR);
+		g2.clearRect(0, 0, WIDTH, HEIGHT);
+		g2.setColor(LINE_COLOR);
+
+		drawCenterString(g2, Utils.TITLE, WIDTH/2, yStart);
+		for(int i = 0; i < LegendType.values().length; i++) {
+			int count = 1;
+			int x = (WIDTH - legendWidth)/2 + i * legendWidth/LegendType.values().length
+					+ legendWidth/LegendType.values().length/2;
+			drawCenterString(g2, LegendType.values()[i].name(), x, yStart + count++ * padding);
+			count++;
+
+			for(String name : Visualizer.colors.keySet()) {
+				if(Visualizer.colors.get(name).type == LegendType.values()[i]) {
+					g2.setColor(Visualizer.colors.get(name).color);
+					g2.fillOval(x - legendWidth/LegendType.values().length/4 -20, yStart + count * padding - 6, 6, 6);
+					g2.setColor(LINE_COLOR);
+					g2.drawString(name, x - legendWidth/LegendType.values().length/4,  yStart + count++ * padding);
+				}
+			}
+
+			legendHeight = Math.max(legendHeight, count * padding);
+		}
+
+		return img.getSubimage(0,0,WIDTH, yStart + legendHeight);
+	}
 	
-	BufferedImage getImages() throws IOException {
+	BufferedImage getImages() {
 		this.currentDay = 0;
 		this.calcRange();
 		BufferedImage img = this.drawImage();
-
-		ImageIO.write(img, "PNG", new File(Utils.TARGET_DIR + Utils.TITLE + ".png"));
-
 		System.out.println(new Date(Visualizer.data.get(this.currentDay).date) + " drawn!");
 		
 		for(int i = 1; i < Visualizer.data.size(); i++) {
 			this.currentDay = i;
 			this.calcRange();
-
-			if(i % 10 == 0) {
-				ImageIO.write(img, "PNG", new File(Utils.TARGET_DIR + Utils.TITLE + ".png"));
-				img = this.drawOnImage();
-			} else {
-				img = this.drawOnImage(img);
-			}
-
+			img = this.drawOnImage(img);
 			System.out.println(new Date(Visualizer.data.get(this.currentDay).date) + " drawn!");
 		}
 		return img;
-	}
-
-	private BufferedImage drawOnImage() throws IOException {
-		return drawOnImage(ImageIO.read(new File(Utils.TARGET_DIR + Utils.TITLE + ".png")));
 	}
 
 	// Returns a bufferedimage containing the graphs
@@ -314,5 +362,22 @@ class Drawer extends JPanel {
 		g.drawImage(img, 0, background.getHeight(), null);
 
 		return combined;
+	}
+
+	BufferedImage drawFullPlot(ArrayList<String> paths) throws IOException {
+		BufferedImage img = drawLegend();
+		for(String path : paths) {
+			BufferedImage newImg = ImageIO.read(new File(path));
+			int w = Math.max(img.getWidth(), newImg.getWidth());
+			int h = img.getHeight() + newImg.getHeight();
+			BufferedImage combined = new BufferedImage(w, h,
+					BufferedImage.TYPE_INT_RGB);
+			Graphics2D g = combined.createGraphics();
+			g.drawImage(img, 0, 0, null);
+			g.drawImage(newImg, 0, img.getHeight(), null);
+
+			img = combined;
+		}
+		return img;
 	}
 }

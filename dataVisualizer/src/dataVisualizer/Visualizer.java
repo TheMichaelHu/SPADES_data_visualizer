@@ -22,15 +22,16 @@ public class Visualizer {
 			sessions = new ArrayList<>();
 	static HashMap<String, String> sensorLocations = new HashMap<>();
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, ParseException {
 		try {
 //			Utils.HOME_DIR = args[0];
 //			Utils.TARGET_DIR = args[1];
 
-			Utils.HOME_DIR = "/home/michael/Desktop/SPADES_8/data/SPADES_8";
-			Utils.TARGET_DIR = "/home/michael/Desktop/";
+			Utils.HOME_DIR = "/home/michael/Desktop/SPADES_25/data/SPADES_25";
+			Utils.TARGET_DIR = "/home/michael/Desktop/spades_output";
 
 			// Do checks on inputs plz
+			validateInputs();
 
 		} catch(IndexOutOfBoundsException e) {
 			System.err.print("Need 2 args: data dir (should contain mastersynced) and target dir");
@@ -40,20 +41,26 @@ public class Visualizer {
 		populateSensorLocations();
 		populateColors();
 
-		parse();
+		ArrayList<String> monthPlots = parseAndDrawMonths();
 
 		Drawer graph = new Drawer();
+		String fileName = String.format("%s%s.%s", Utils.TARGET_DIR, Utils.TITLE, Utils.IMAGE_EXT);
+		ImageIO.write(graph.drawFullPlot(monthPlots), Utils.IMAGE_EXT, new File(fileName));
+		for(String path : monthPlots) {
+			new File(path).delete();
+		}
+		System.out.println("Done!");
+	}
+
+	private static void validateInputs() {
 		File target = new File(Utils.TARGET_DIR);
 		if (target.isDirectory()) {
 			if (Utils.TARGET_DIR.toCharArray()[Utils.TARGET_DIR.length() - 1] != '/') {
 				Utils.TARGET_DIR += "/";
 			}
-			ImageIO.write(graph.getImages(), "PNG", new File(Utils.TARGET_DIR + Utils.TITLE + ".png"));
 		} else {
-			System.err.println(Utils.TARGET_DIR + " is not a directory");
+			throw new RuntimeException(Utils.TARGET_DIR + " is not a directory");
 		}
-
-		graph.drawInFrame();
 	}
 
 	private static void populateSensorLocations() {
@@ -93,12 +100,17 @@ public class Visualizer {
 		colors.put("watch battery", new LegendItem("Watch", new Color(230,230,0,75), LegendType.BATTERY));
 	}
 
-	private static void parse() {
+	private static ArrayList<String> parseAndDrawMonths() throws IOException, ParseException {
 		File folder = new File(Utils.DATA_DIR);
 		File[] listOfYears = folder.listFiles();
+		ArrayList<String> monthPlots = new ArrayList<>();
+
+		handleEventsAndAnnotations();
+		Visualizer.prompts = getPrompts();
+		Visualizer.sessions = getSessions();
 
 		if(listOfYears == null) {
-			return;
+			return monthPlots;
 		}
 
 		for(File year : listOfYears) {
@@ -122,17 +134,15 @@ public class Visualizer {
 					continue;
 				}
 				gatherData(month, year);
-				System.out.println(String.format("Finished a month %d of %d in %s", count++, monthCount, year.getName()));
+				String fileName = String.format("%s%s_%s_%s.%s",
+						Utils.TARGET_DIR, Utils.TITLE, month.getName(), year.getName(), Utils.IMAGE_EXT);
+				monthPlots.add(fileName);
+				drawData(fileName);
+				clearData();
+				System.out.println(String.format("Finished month %d of %d in %s", count++, monthCount, year.getName()));
 			}
 		}
-
-		try {
-			handleEventsAndAnnotations();
-			Visualizer.prompts = getPrompts();
-			Visualizer.sessions = getSessions();
-		} catch (IOException|ParseException e) {
-			e.printStackTrace();
-		}
+		return monthPlots;
 	}
 
 	private static void gatherData(File month, File year) {
@@ -168,6 +178,21 @@ public class Visualizer {
 
 		} catch (InterruptedException e) {
 			e.printStackTrace();
+		}
+	}
+
+	private static void drawData(String fileName) throws IOException {
+		Drawer graph = new Drawer();
+		ImageIO.write(graph.getImages(), Utils.IMAGE_EXT, new File(fileName));
+	}
+
+	private static void clearData() {
+		data.clear();
+		dataW.clear();
+		battery.clear();
+		batteryW.clear();
+		for(String sensorId : sensorLocations.keySet()) {
+			sensorData.get(sensorId).clear();
 		}
 	}
 
