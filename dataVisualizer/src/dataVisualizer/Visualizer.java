@@ -1,5 +1,6 @@
 package dataVisualizer;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.io.*;
 import java.text.DateFormat;
@@ -11,9 +12,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
-import javax.imageio.ImageIO;
-
-
 public class Visualizer {
 	static ArrayList<Day> data = new ArrayList<>(), dataW = new ArrayList<>(), battery = new ArrayList<>(),
 			batteryW = new ArrayList<>();
@@ -23,15 +21,13 @@ public class Visualizer {
 	static ArrayList<Event> annotations = new ArrayList<>(), calls = new ArrayList<>(), texts = new ArrayList<>(),
 			sessions = new ArrayList<>();
 	static HashMap<String, String> sensorLocations = new HashMap<>();
-	static boolean dataLabelsFlag = true;
-	static boolean promptsFlag = true;
 
 	public static void main(String[] args) throws IOException {
 		try {
 //			Utils.HOME_DIR = args[0];
 //			Utils.TARGET_DIR = args[1];
 
-			Utils.HOME_DIR = "/home/michael/Desktop/SPADES_25/data/SPADES_25";
+			Utils.HOME_DIR = "/home/michael/Desktop/SPADES_8/data/SPADES_8";
 			Utils.TARGET_DIR = "/home/michael/Desktop/";
 
 			// Do checks on inputs plz
@@ -110,6 +106,14 @@ public class Visualizer {
 			if (listOfMonths == null) {
 				continue;
 			}
+
+			for(int i = 0; i < listOfMonths.length/2; i++) {
+				File temp;
+				temp = listOfMonths[i];
+				listOfMonths[i] = listOfMonths[listOfMonths.length-i-1];
+				listOfMonths[listOfMonths.length-i-1] = temp;
+			}
+
 			int monthCount = listOfMonths.length;
 			int count = 1;
 
@@ -138,29 +142,29 @@ public class Visualizer {
 		Thread getWatchDataThread = new Thread(new DataRunner(new WatchDataGetter(month, year)));
 		getWatchDataThread.start();
 
-//		Thread getPhoneBatteryDataThread = new Thread(new DataRunner(new PhoneBatteryDataGetter(month, year)));
-//		getPhoneBatteryDataThread.start();
-//
-//		Thread getWatchBatteryDataThread = new Thread(new DataRunner(new WatchBatteryDataGetter(month, year)));
-//		getWatchBatteryDataThread.start();
+		Thread getPhoneBatteryDataThread = new Thread(new DataRunner(new PhoneBatteryDataGetter(month, year)));
+		getPhoneBatteryDataThread.start();
 
-//		ArrayList<Thread> getSensorDataThreads = new ArrayList<>();
-//		Set<String> sensorIds = sensorLocations.keySet();
-//		for(String sensorId : sensorIds) {
-//			Thread getSensorDataThread = new Thread(new DataRunner(new SensorDataGetter(month, year, sensorId)));
-//			getSensorDataThread.start();
-//			getSensorDataThreads.add(getSensorDataThread);
-//		}
+		Thread getWatchBatteryDataThread = new Thread(new DataRunner(new WatchBatteryDataGetter(month, year)));
+		getWatchBatteryDataThread.start();
+
+		ArrayList<Thread> getSensorDataThreads = new ArrayList<>();
+		Set<String> sensorIds = sensorLocations.keySet();
+		for(String sensorId : sensorIds) {
+			Thread getSensorDataThread = new Thread(new DataRunner(new SensorDataGetter(month, year, sensorId)));
+			getSensorDataThread.start();
+			getSensorDataThreads.add(getSensorDataThread);
+		}
 
 		try {
 			getPhoneDataThread.join();
 			getWatchDataThread.join();
-//			getPhoneBatteryDataThread.join();
-//			getWatchBatteryDataThread.join();
-//
-//			for(Thread thread : getSensorDataThreads) {
-//				thread.join();
-//			}
+			getPhoneBatteryDataThread.join();
+			getWatchBatteryDataThread.join();
+
+			for(Thread thread : getSensorDataThreads) {
+				thread.join();
+			}
 
 		} catch (InterruptedException e) {
 			e.printStackTrace();
@@ -239,7 +243,6 @@ public class Visualizer {
 
 		File folder = new File(Utils.SURVEY_DIR);
 		if(!folder.exists()) {
-			Visualizer.promptsFlag = false;
 			System.err.println("missing survey dir");
 			return new ArrayList<>();
 		}

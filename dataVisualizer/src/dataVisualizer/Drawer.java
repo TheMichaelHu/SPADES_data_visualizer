@@ -1,27 +1,23 @@
 package dataVisualizer;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Point;
-import java.awt.RenderingHints;
+import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 
-import javax.swing.JFrame;
-import javax.swing.JPanel;
+import javax.imageio.ImageIO;
+import javax.swing.*;
 
 class Drawer extends JPanel {
 	private static final long serialVersionUID = 1L;
 
 	// Preferences
-	private static final int WIDTH = 3000;
-	private static final int HEIGHT = 500;
+	private static final int WIDTH = Utils.WIDTH;
+	private static final int HEIGHT = Utils.HEIGHT;
 
 	// Configs
 	private static final double Y_HATCH_INTERVAL = .5;
@@ -36,6 +32,7 @@ class Drawer extends JPanel {
 
 	private long minX, maxX;
 	private int currentDay;
+	private int originY;
 
 	Drawer() {
 		this.currentDay = 0;
@@ -75,15 +72,18 @@ class Drawer extends JPanel {
 		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
 				RenderingHints.VALUE_ANTIALIAS_ON);
 
-		drawPlot(g2, Visualizer.data, start, end, 10, HEIGHT, "phone data");
-		drawPlot(g2, Visualizer.dataW, start, end, 10, HEIGHT, "watch data");
+		drawPlot(g2, start, end, 10, HEIGHT);
 
-		drawCenterString(g2, new SimpleDateFormat("MM-dd-yyyy").format(new Date(Visualizer.data.get(this.currentDay).date)), start, 0);
+		g2.setColor(LINE_COLOR);
+		drawCenterString(g2, new SimpleDateFormat("MM-dd-yyyy").format(
+				new Date(Visualizer.data.get(this.currentDay).date)), (start + end)/2, 0);
 	}
 
-	private void drawPlot(Graphics2D g2, ArrayList<Day> data, int xStart, int xEnd, int yStart, int yEnd, String name) {
+	private void drawPlot(Graphics2D g2, int xStart, int xEnd, int yStart, int yEnd) {
+		int xRange = xEnd - xStart;
+		int yRange = yEnd - yStart;
 		int originX = xStart + PADDING;
-		int originY = this.scalePoint(0, 0, xEnd - xStart, yEnd - yStart).y + yStart;
+		originY = this.scalePoint(0, 0, xRange, yRange).y + yStart;
 		ArrayList<Point> graphPoints;
 
 		// draw x(time) and y(acceleration) axis
@@ -96,7 +96,7 @@ class Drawer extends JPanel {
 		for (int i = 0; i < Utils.MAX_Y/Y_HATCH_INTERVAL; i++) {
 			int x0 = originX - HATCH_LENGTH;
 			int x1 = originX + HATCH_LENGTH;
-			int y0 = scalePoint(0, i * Y_HATCH_INTERVAL, xEnd - xStart, yEnd - yStart).y + yStart;
+			int y0 = scalePoint(0, i * Y_HATCH_INTERVAL, xRange, yRange).y + yStart;
 			if (y0 > PADDING + yStart) {
 				g2.drawLine(x0, y0, x1, y0);
 				drawCenterString(g2, String.format("%.1f", Y_HATCH_INTERVAL * i), originX, y0);
@@ -105,10 +105,7 @@ class Drawer extends JPanel {
 
 		// and for x axis
 		for (int i = 0; i < 24; i++) {
-			int x0 = scalePoint(minX + (i*60*60*1000), 0, xEnd - xStart, yEnd - yStart).x + xStart;
-//			int xText = x0
-//					+ (x0 - (scalePoint(minX + i - 1, 0, xEnd - xStart, yEnd - yStart).x + xStart))
-//					/ 2;
+			int x0 = scalePoint(minX + (i*60*60*1000), 0, xRange, yRange).x + xStart;
 			int y0 = originY + HATCH_LENGTH;
 			int y1 = originY - HATCH_LENGTH;
 
@@ -116,9 +113,90 @@ class Drawer extends JPanel {
 			drawCenterString(g2, ""+i, x0, originY);
 		}
 
-		g2.setColor(Visualizer.colors.get(name).color);
-		graphPoints = dataToPoints(data.get(this.currentDay), xEnd - xStart, yEnd - yStart);
-		drawPoints(graphPoints, g2, xStart, yStart);
+		// draw data
+		graphPoints = dataToPoints(scaleBatteryData(Visualizer.battery.get(this.currentDay)), xRange, yRange);
+		drawArea(graphPoints, g2, xStart, yStart, Visualizer.colors.get("phone battery").color);
+
+		graphPoints = dataToPoints(scaleBatteryData(Visualizer.batteryW.get(this.currentDay)), xRange, yRange);
+		drawArea(graphPoints, g2, xStart, yStart, Visualizer.colors.get("watch battery").color);
+
+		graphPoints = dataToPoints(Visualizer.data.get(this.currentDay), xRange, yRange);
+		drawLinePlot(graphPoints, g2, xStart, yStart, Visualizer.colors.get("phone data").color);
+
+		graphPoints = dataToPoints(Visualizer.dataW.get(this.currentDay), xRange, yRange);
+		drawLinePlot(graphPoints, g2, xStart, yStart,  Visualizer.colors.get("watch data").color);
+
+		int count = 0;
+		for(String sensorId : Visualizer.sensorLocations.keySet()) {
+			graphPoints = dataToPoints(Visualizer.sensorData.get(sensorId).get(this.currentDay), xRange, yRange);
+			drawLinePlot(graphPoints, g2, xStart, yStart, giveColor(sensorId, ++count, .9, LegendType.DATA));
+		}
+
+		Stroke dashed = new BasicStroke(GRAPH_POINT_WIDTH, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
+				0, new float[]{9}, 0);
+		g2.setStroke(dashed);
+
+		for(Event event : Visualizer.calls) {
+			int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
+			g2.setColor( Visualizer.colors.get("call").color);
+			g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
+		}
+
+		for(Event event : Visualizer.texts) {
+			int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
+			g2.setColor( Visualizer.colors.get("text").color);
+			g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
+		}
+
+		for(Event annotation : Visualizer.annotations) {
+			if(!Arrays.asList(Utils.IGNORED_ANNOTATIONS).contains(annotation.text.toLowerCase().trim())) {
+				int x = this.scalePoint(annotation.fromDate, 0, xRange, yRange).x;
+				g2.setColor(Color.gray);
+				drawCenterString(g2, annotation.text, x + xStart + 3, annotation.getLabelHeight() + yStart + 3);
+				g2.setColor(LINE_COLOR);
+				drawCenterString(g2, annotation.text, x + xStart, annotation.getLabelHeight() + yStart);
+			}
+		}
+
+		for(Prompt prompt : Visualizer.prompts) {
+			int x = this.scalePoint(prompt.date, 0, xRange, yRange).x;
+			if(prompt.completed) {
+				g2.setColor(Visualizer.colors.get("answered prompt").color);
+				drawCenterString(g2, prompt.posture, x + xStart, PADDING + yStart);
+			} else {
+				g2.setColor(Visualizer.colors.get("ignored prompt").color);
+				drawCenterString(g2, prompt.activity, x + xStart, PADDING + yStart);
+			}
+			g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
+		}
+	}
+
+	private void drawLinePlot(ArrayList<Point> points, Graphics2D g2, int xOffset, int yOffset, Color color) {
+		g2.setColor(color);
+		for (int i = 1; i < points.size(); i++) {
+			Point point0 = points.get(i-1);
+			Point point1 = points.get(i);
+			g2.setStroke(new BasicStroke(GRAPH_POINT_WIDTH));
+			g2.drawLine(point0.x + xOffset, point0.y + yOffset,
+					point1.x + xOffset, point1.y + yOffset);
+		}
+	}
+
+	private void drawArea(ArrayList<Point> points, Graphics2D g2, int xOffset, int yOffset, Color color) {
+		g2.setColor(color);
+		for (int i = 1; i < points.size(); i++) {
+			Point point0 = points.get(i-1);
+			Point point1 = points.get(i);
+
+			Polygon p = new Polygon();
+			p.addPoint(point0.x + xOffset, point0.y + yOffset);
+			p.addPoint(point1.x + xOffset, point1.y + yOffset);
+			p.addPoint(point1.x + xOffset, originY);
+			p.addPoint(point0.x + xOffset, originY);
+
+			g2.setColor(color);
+			g2.fill(p);
+		}
 	}
 
 	private void drawCenterString(Graphics2D g2, String str, int x, int y) {
@@ -139,21 +217,29 @@ class Drawer extends JPanel {
 		for(DataPoint dp : data.data) {
 			if(dp.value != null) {
 				points.add(this.scalePoint(dp.date, dp.value, width, height));
-				System.out.println(height);
 			}
 		}
 		return points;
 	}
 
-	private void drawPoints(ArrayList<Point> points, Graphics2D g2, int xOffset, int yOffset) {
-		for (Point point : points) {
-			int x = point.x + xOffset;
-			int y = point.y + yOffset;
-
-			int ovalW = GRAPH_POINT_WIDTH;
-			int ovalH = GRAPH_POINT_WIDTH;
-			g2.fillOval(x, y, ovalW, ovalH);
+	private Day scaleBatteryData(Day data) {
+		Day scaledDay = new Day();
+		scaledDay.date = data.date;
+		for(DataPoint dp: data.data) {
+			if(dp.value != null) {
+				DataPoint scaledPoint = new DataPoint(dp.date, dp.value * (Utils.MAX_Y - Utils.MIN_Y) / 100);
+				scaledDay.data.add(scaledPoint);
+			}
 		}
+		return scaledDay;
+	}
+
+	private Color giveColor(String name, int seed, double opacity, LegendType type) {
+		if(!Visualizer.colors.containsKey(name)) {
+			Color randColor = new Color(seed * 947 % 255, seed * 1013 % 255, seed * 1913 % 255, (int)(opacity * 255));
+			Visualizer.colors.put(name, new LegendItem(name, randColor, type));
+		}
+		return Visualizer.colors.get(name).color;
 	}
 
 	@Override
@@ -162,10 +248,10 @@ class Drawer extends JPanel {
 	}
 
 	// Creates a JFrame and draws the graph on it
-	public void drawInFrame() {
+	void drawInFrame() {
 		this.setBackground(BACKGROUND_COLOR);
 		JFrame frame = new JFrame(Utils.TITLE);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		frame.getContentPane().add(this);
 		frame.pack();
 		frame.setLocationByPlatform(true);
@@ -182,21 +268,37 @@ class Drawer extends JPanel {
 		return img;
 	}
 	
-	public BufferedImage getImages() {
+	BufferedImage getImages() throws IOException {
 		this.currentDay = 0;
+		this.calcRange();
 		BufferedImage img = this.drawImage();
+
+		ImageIO.write(img, "PNG", new File(Utils.TARGET_DIR + Utils.TITLE + ".png"));
+
 		System.out.println(new Date(Visualizer.data.get(this.currentDay).date) + " drawn!");
 		
 		for(int i = 1; i < Visualizer.data.size(); i++) {
 			this.currentDay = i;
-			img = this.drawOnImage(img);
+			this.calcRange();
+
+			if(i % 10 == 0) {
+				ImageIO.write(img, "PNG", new File(Utils.TARGET_DIR + Utils.TITLE + ".png"));
+				img = this.drawOnImage();
+			} else {
+				img = this.drawOnImage(img);
+			}
+
 			System.out.println(new Date(Visualizer.data.get(this.currentDay).date) + " drawn!");
 		}
 		return img;
 	}
 
+	private BufferedImage drawOnImage() throws IOException {
+		return drawOnImage(ImageIO.read(new File(Utils.TARGET_DIR + Utils.TITLE + ".png")));
+	}
+
 	// Returns a bufferedimage containing the graphs
-	public BufferedImage drawOnImage(BufferedImage background) {
+	private BufferedImage drawOnImage(BufferedImage background) {
 		BufferedImage img = this.drawImage();
 
 		if (background == null) {
