@@ -312,29 +312,37 @@ class Drawer extends JPanel {
 	}
 
 	private BufferedImage drawLegend() {
+		int titleFontSize = 30;
+		int normalFontSize = 20;
+		Font titleFont = new Font("sansserif", Font.BOLD, titleFontSize);
+		Font normalFont = new Font("sansserif", Font.PLAIN, normalFontSize);
+
 		int yStart = 10;
-		int padding = 30;
+		int padding = 30 + normalFontSize;
 		int legendHeight = 0;
 		BufferedImage img = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
 		Graphics2D g2 = img.createGraphics();
 		g2.setBackground(BACKGROUND_COLOR);
 		g2.clearRect(0, 0, WIDTH, HEIGHT);
 		g2.setColor(LINE_COLOR);
+		g2.setFont(titleFont);
 
 		drawCenterString(g2, Utils.TITLE, WIDTH/2, yStart);
 		for(int i = 0; i < LegendType.values().length; i++) {
-			int count = 1;
+			int count = 2;
 			int x = (WIDTH - LEGEND_WIDTH)/2 + i * LEGEND_WIDTH/LegendType.values().length
 					+ LEGEND_WIDTH/LegendType.values().length/2;
+			g2.setFont(normalFont.deriveFont(Font.BOLD));
 			drawCenterString(g2, LegendType.values()[i].name(), x, yStart + count++ * padding);
-			count++;
 
+			g2.setFont(normalFont);
 			for(String name : Visualizer.colors.keySet()) {
 				if(Visualizer.colors.get(name).type == LegendType.values()[i]) {
 					g2.setColor(Visualizer.colors.get(name).color);
 					g2.fillOval(x - LEGEND_WIDTH/LegendType.values().length/4 -20, yStart + count * padding - 6, 6, 6);
 					g2.setColor(LINE_COLOR);
-					g2.drawString(name, x - LEGEND_WIDTH/LegendType.values().length/4,  yStart + count++ * padding);
+					g2.drawString(Visualizer.colors.get(name).name, x - LEGEND_WIDTH/LegendType.values().length/4,
+							yStart + count++ * padding);
 				}
 			}
 
@@ -431,10 +439,10 @@ class Drawer extends JPanel {
 		return combined;
 	}
 
-	BufferedImage exportFullPlot(ArrayList<String> paths, String fileName) throws IOException {
+	boolean exportFullPlot(ArrayList<String> paths, String fileName) throws IOException {
 		BufferedImage img = null;
 		switch(Utils.CHART_TYPE) {
-			case byMonth:
+			case byDay:
 				img = drawLegend();
 				for (String path : paths) {
 					BufferedImage newImg = ImageIO.read(new File(path));
@@ -450,14 +458,28 @@ class Drawer extends JPanel {
 					Utils.TARGET_DIR, Utils.TITLE, weekCount++, Utils.IMAGE_EXT))).exists()) {
 					BufferedImage newImg = ImageIO.read(chart);
 					img = drawBelowImage(img, newImg);
-					chart.delete();
 				}
 				img = drawBelowImage(drawLegend(), img, (int)(WIDTH*3.5 - .5 * LEGEND_WIDTH), 0);
 				break;
 
-			default: break;
+			default:
+				return false;
 		}
-		ImageIO.write(img, Utils.IMAGE_EXT, new File(fileName));
-		return img;
+		try {
+			ImageIO.write(img, Utils.IMAGE_EXT, new File(fileName));
+
+			if(Utils.CHART_TYPE == Utils.ChartType.byWeek) {
+				File chart;
+				int weekCount = 1;
+				while ((chart = new File(String.format("%s%s_week_%s.%s",
+						Utils.TARGET_DIR, Utils.TITLE, weekCount++, Utils.IMAGE_EXT))).exists()) {
+					chart.delete();
+				}
+			}
+		} catch(IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+		return true;
 	}
 }

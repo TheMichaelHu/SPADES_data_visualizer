@@ -29,7 +29,7 @@ class Utils {
     static final ChartType CHART_TYPE = ChartType.byWeek;
 
     enum ChartType {
-        byWeek, byMonth
+        byWeek, byDay
     }
 
     static void updateDirs() {

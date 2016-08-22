@@ -1,6 +1,5 @@
 package dataVisualizer;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.io.*;
 import java.text.DateFormat;
@@ -38,10 +37,13 @@ public class Visualizer {
 
 		Drawer graph = new Drawer();
 		String fileName = String.format("%s%s.%s", Utils.TARGET_DIR, Utils.TITLE, Utils.IMAGE_EXT);
-		graph.exportFullPlot(monthPlots, fileName);
-		for(String path : monthPlots) {
-			//noinspection ResultOfMethodCallIgnored
-			new File(path).delete();
+		if(graph.exportFullPlot(monthPlots, fileName)) {
+			for (String path : monthPlots) {
+				//noinspection ResultOfMethodCallIgnored
+				new File(path).delete();
+			}
+		} else {
+			System.err.println("Couldn't draw data.");
 		}
 		System.out.println("Done!");
 	}
@@ -143,7 +145,7 @@ public class Visualizer {
 				String fileName = String.format("%s%s_%s_%s.%s",
 						Utils.TARGET_DIR, Utils.TITLE, month.getName(), year.getName(), Utils.IMAGE_EXT);
 
-				if(Utils.CHART_TYPE == Utils.ChartType.byMonth) {
+				if(Utils.CHART_TYPE == Utils.ChartType.byDay) {
 					monthPlots.add(fileName);
 					drawData(fileName);
 					clearData();

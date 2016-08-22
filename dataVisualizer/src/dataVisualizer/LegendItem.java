@@ -3,7 +3,7 @@ package dataVisualizer;
 import java.awt.*;
 
 class LegendItem {
-    private String name;
+    String name;
     Color color;
     LegendType type;
 
