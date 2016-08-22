@@ -119,7 +119,7 @@ abstract class DataGetter {
 
                 if (Utils.USE_DYNAMIC_HEIGHT) {
                     if (finalAverage > Utils.MAX_Y) {
-                        Utils.MAX_Y = finalAverage;
+                        Utils.MAX_Y = Math.min(finalAverage, Utils.MAX_Y_CAP);
                     } else if (finalAverage < Utils.MIN_Y) {
                         Utils.MIN_Y = finalAverage;
                     }

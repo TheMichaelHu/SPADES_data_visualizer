@@ -6,10 +6,7 @@ import java.io.*;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 import java.util.zip.GZIPInputStream;
 
 public class Visualizer {
@@ -24,17 +21,13 @@ public class Visualizer {
 
 	public static void main(String[] args) throws IOException, ParseException {
 		try {
-//			Utils.HOME_DIR = args[0];
-//			Utils.TARGET_DIR = args[1];
+			Utils.HOME_DIR = args[0];
+			Utils.TARGET_DIR = args[1];
 
-			Utils.HOME_DIR = "/home/michael/Desktop/SPADES_25/data/SPADES_25";
-			Utils.TARGET_DIR = "/home/michael/Desktop/spades_output";
-
-			// Do checks on inputs plz
 			validateInputs();
 
 		} catch(IndexOutOfBoundsException e) {
-			System.err.print("Need 2 args: data dir (should contain mastersynced) and target dir");
+			System.err.print("Need 2 args: [data dir (should contain mastersynced)] [target dir]");
 			throw e;
 		}
 		Utils.updateDirs();
@@ -45,14 +38,24 @@ public class Visualizer {
 
 		Drawer graph = new Drawer();
 		String fileName = String.format("%s%s.%s", Utils.TARGET_DIR, Utils.TITLE, Utils.IMAGE_EXT);
-		ImageIO.write(graph.drawFullPlot(monthPlots), Utils.IMAGE_EXT, new File(fileName));
+		graph.exportFullPlot(monthPlots, fileName);
 		for(String path : monthPlots) {
+			//noinspection ResultOfMethodCallIgnored
 			new File(path).delete();
 		}
 		System.out.println("Done!");
 	}
 
 	private static void validateInputs() {
+		File home = new File(Utils.HOME_DIR);
+		if (home.isDirectory()) {
+			if (Utils.HOME_DIR.toCharArray()[Utils.HOME_DIR.length() - 1] != '/') {
+				Utils.HOME_DIR += "/";
+			}
+		} else {
+			throw new RuntimeException(Utils.HOME_DIR + " is not a directory");
+		}
+
 		File target = new File(Utils.TARGET_DIR);
 		if (target.isDirectory()) {
 			if (Utils.TARGET_DIR.toCharArray()[Utils.TARGET_DIR.length() - 1] != '/') {
@@ -98,8 +101,11 @@ public class Visualizer {
 		colors.put("watch data", new LegendItem("Watch", new Color(255,30,0,180), LegendType.DATA));
 		colors.put("phone battery", new LegendItem("Phone", new Color(0,0,255,75), LegendType.BATTERY));
 		colors.put("watch battery", new LegendItem("Watch", new Color(230,230,0,75), LegendType.BATTERY));
+		colors.put("annotation", new LegendItem("Annotation", new Color(230,0,230,180), LegendType.EVENT));
 	}
 
+	// If drawing by months, we'll save every months worth of data and export it to an image to be
+	// aggregated later. If drawing by weeks, all data will be saved at once and nothing will be exported.
 	private static ArrayList<String> parseAndDrawMonths() throws IOException, ParseException {
 		File folder = new File(Utils.DATA_DIR);
 		File[] listOfYears = folder.listFiles();
@@ -136,9 +142,12 @@ public class Visualizer {
 				gatherData(month, year);
 				String fileName = String.format("%s%s_%s_%s.%s",
 						Utils.TARGET_DIR, Utils.TITLE, month.getName(), year.getName(), Utils.IMAGE_EXT);
-				monthPlots.add(fileName);
-				drawData(fileName);
-				clearData();
+
+				if(Utils.CHART_TYPE == Utils.ChartType.byMonth) {
+					monthPlots.add(fileName);
+					drawData(fileName);
+					clearData();
+				}
 				System.out.println(String.format("Finished month %d of %d in %s", count++, monthCount, year.getName()));
 			}
 		}
@@ -183,7 +192,7 @@ public class Visualizer {
 
 	private static void drawData(String fileName) throws IOException {
 		Drawer graph = new Drawer();
-		ImageIO.write(graph.getImages(), Utils.IMAGE_EXT, new File(fileName));
+		graph.exportImage(fileName);
 	}
 
 	private static void clearData() {

@@ -5,9 +5,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
+import java.util.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -18,6 +16,7 @@ class Drawer extends JPanel {
 	// Preferences
 	private final int WIDTH = Utils.WIDTH;
 	private final int HEIGHT = Utils.HEIGHT;
+	private final int LEGEND_WIDTH = WIDTH/3;
 
 	// Constants
 	private final int PADDING = 30;
@@ -151,12 +150,20 @@ class Drawer extends JPanel {
 			}
 		}
 
+		HashMap<String, Long> recentAnnotations = new HashMap<>();
 		for(Event annotation : Visualizer.annotations) {
 			if(!Arrays.asList(Utils.IGNORED_ANNOTATIONS).contains(annotation.text.toLowerCase().trim())) {
 				if(currentTime < annotation.fromDate && annotation.fromDate < currentTime + 24 * 60 * 60 *1000) {
 					int x = this.scalePoint(annotation.fromDate, 0, xRange, yRange).x;
 					g2.setColor(LINE_COLOR);
-					drawCenterString(g2, annotation.text, x + xStart, annotation.getLabelHeight() + yStart);
+					if(recentAnnotations.get(annotation.text) == null ||
+							annotation.fromDate - recentAnnotations.get(annotation.text) >= 60 * 60 * 1000) {
+						drawCenterString(g2, annotation.text, x + xStart, annotation.getLabelHeight() + yStart);
+						recentAnnotations.put(annotation.text, annotation.fromDate);
+					}
+					g2.setColor(Visualizer.colors.get("annotation").color);
+					g2.fillOval(x + xStart, annotation.getLabelHeight() + yStart,
+							GRAPH_POINT_WIDTH, GRAPH_POINT_WIDTH - 2);
 				}
 			}
 		}
@@ -296,8 +303,15 @@ class Drawer extends JPanel {
 		return img;
 	}
 
+	private BufferedImage drawSpacing(int num) {
+		BufferedImage img = new BufferedImage((WIDTH * num) + 1, HEIGHT, BufferedImage.TYPE_INT_RGB);
+		Graphics2D g2 = img.createGraphics();
+		g2.setBackground(BACKGROUND_COLOR);
+		g2.clearRect(0, 0, (WIDTH * num) + 1, HEIGHT);
+		return img;
+	}
+
 	private BufferedImage drawLegend() {
-		int legendWidth = WIDTH/3;
 		int yStart = 10;
 		int padding = 30;
 		int legendHeight = 0;
@@ -310,17 +324,17 @@ class Drawer extends JPanel {
 		drawCenterString(g2, Utils.TITLE, WIDTH/2, yStart);
 		for(int i = 0; i < LegendType.values().length; i++) {
 			int count = 1;
-			int x = (WIDTH - legendWidth)/2 + i * legendWidth/LegendType.values().length
-					+ legendWidth/LegendType.values().length/2;
+			int x = (WIDTH - LEGEND_WIDTH)/2 + i * LEGEND_WIDTH/LegendType.values().length
+					+ LEGEND_WIDTH/LegendType.values().length/2;
 			drawCenterString(g2, LegendType.values()[i].name(), x, yStart + count++ * padding);
 			count++;
 
 			for(String name : Visualizer.colors.keySet()) {
 				if(Visualizer.colors.get(name).type == LegendType.values()[i]) {
 					g2.setColor(Visualizer.colors.get(name).color);
-					g2.fillOval(x - legendWidth/LegendType.values().length/4 -20, yStart + count * padding - 6, 6, 6);
+					g2.fillOval(x - LEGEND_WIDTH/LegendType.values().length/4 -20, yStart + count * padding - 6, 6, 6);
 					g2.setColor(LINE_COLOR);
-					g2.drawString(name, x - legendWidth/LegendType.values().length/4,  yStart + count++ * padding);
+					g2.drawString(name, x - LEGEND_WIDTH/LegendType.values().length/4,  yStart + count++ * padding);
 				}
 			}
 
@@ -329,8 +343,8 @@ class Drawer extends JPanel {
 
 		return img.getSubimage(0,0,WIDTH, yStart + legendHeight);
 	}
-	
-	BufferedImage getImages() {
+
+	BufferedImage exportImage(String fileName) throws IOException {
 		this.currentDay = 0;
 		this.calcRange();
 		BufferedImage img = this.drawImage();
@@ -339,16 +353,49 @@ class Drawer extends JPanel {
 		for(int i = 1; i < Visualizer.data.size(); i++) {
 			this.currentDay = i;
 			this.calcRange();
-			img = this.drawOnImage(img);
+			img = this.drawBelowImage(img, this.drawImage());
 			System.out.println(new Date(Visualizer.data.get(this.currentDay).date) + " drawn!");
 		}
+		ImageIO.write(img, Utils.IMAGE_EXT, new File(fileName));
 		return img;
 	}
 
-	// Returns a bufferedimage containing the graphs
-	private BufferedImage drawOnImage(BufferedImage background) {
-		BufferedImage img = this.drawImage();
+	private void exportImagesByWeek() throws IOException {
+		int weekCount = 1;
+		Calendar cal = Calendar.getInstance();
+		cal.setTime(new Date(Visualizer.data.get(0).date));
+		int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+		BufferedImage img = this.drawSpacing(dayOfWeek-1);
 
+		for(int i = 0; i < Visualizer.data.size(); i++) {
+			this.currentDay = i;
+			this.calcRange();
+			img = this.drawRightOfImage(img, this.drawImage());
+			System.out.println(new Date(Visualizer.data.get(this.currentDay).date) + " drawn!");
+
+			cal.setTime(new Date(Visualizer.data.get(i).date));
+			dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+			if(dayOfWeek == 7) {
+				String fileName = String.format("%s%s_week_%d.%s",
+						Utils.TARGET_DIR, Utils.TITLE, weekCount++, Utils.IMAGE_EXT);
+				ImageIO.write(img, Utils.IMAGE_EXT, new File(fileName));
+				img = this.drawSpacing(0);
+			}
+		}
+
+		img = this.drawRightOfImage(img, this.drawSpacing(7 - dayOfWeek));
+		String fileName = String.format("%s%s_week_%d.%s",
+				Utils.TARGET_DIR, Utils.TITLE, weekCount, Utils.IMAGE_EXT);
+		ImageIO.write(img, Utils.IMAGE_EXT, new File(fileName));
+	}
+
+	// Returns a bufferedimage containing the graphs
+	private BufferedImage drawBelowImage(BufferedImage background, BufferedImage img) {
+		return drawBelowImage(background, img, 0, 0);
+	}
+
+	// Returns a bufferedimage containing the graphs
+	private BufferedImage drawBelowImage(BufferedImage background, BufferedImage img, int xOffset1, int xOffset2) {
 		if (background == null) {
 			return img;
 		}
@@ -357,27 +404,60 @@ class Drawer extends JPanel {
 		int h = background.getHeight() + img.getHeight();
 		BufferedImage combined = new BufferedImage(w, h,
 				BufferedImage.TYPE_INT_RGB);
-		Graphics2D g = combined.createGraphics();
-		g.drawImage(background, 0, 0, null);
-		g.drawImage(img, 0, background.getHeight(), null);
+		Graphics2D g2 = combined.createGraphics();
+		g2.setBackground(BACKGROUND_COLOR);
+		g2.clearRect(0, 0, w, h);
+		g2.drawImage(background, xOffset1, 0, null);
+		g2.drawImage(img, xOffset2, background.getHeight(), null);
 
 		return combined;
 	}
 
-	BufferedImage drawFullPlot(ArrayList<String> paths) throws IOException {
-		BufferedImage img = drawLegend();
-		for(String path : paths) {
-			BufferedImage newImg = ImageIO.read(new File(path));
-			int w = Math.max(img.getWidth(), newImg.getWidth());
-			int h = img.getHeight() + newImg.getHeight();
-			BufferedImage combined = new BufferedImage(w, h,
-					BufferedImage.TYPE_INT_RGB);
-			Graphics2D g = combined.createGraphics();
-			g.drawImage(img, 0, 0, null);
-			g.drawImage(newImg, 0, img.getHeight(), null);
-
-			img = combined;
+	private BufferedImage drawRightOfImage(BufferedImage background, BufferedImage img) {
+		if (background == null) {
+			return img;
 		}
+
+		int w = background.getWidth() + img.getWidth();
+		int h = Math.max(background.getHeight(), img.getHeight());
+		BufferedImage combined = new BufferedImage(w, h,
+				BufferedImage.TYPE_INT_RGB);
+		Graphics2D g2 = combined.createGraphics();
+		g2.setBackground(BACKGROUND_COLOR);
+		g2.clearRect(0, 0, w, h);
+		g2.drawImage(background, 0, 0, null);
+		g2.drawImage(img, background.getWidth(), 0, null);
+
+		return combined;
+	}
+
+	BufferedImage exportFullPlot(ArrayList<String> paths, String fileName) throws IOException {
+		BufferedImage img = null;
+		switch(Utils.CHART_TYPE) {
+			case byMonth:
+				img = drawLegend();
+				for (String path : paths) {
+					BufferedImage newImg = ImageIO.read(new File(path));
+					img = drawBelowImage(img, newImg);
+				}
+				break;
+
+			case byWeek:
+				File chart;
+				int weekCount = 1;
+				exportImagesByWeek();
+				while((chart = new File(String.format("%s%s_week_%s.%s",
+					Utils.TARGET_DIR, Utils.TITLE, weekCount++, Utils.IMAGE_EXT))).exists()) {
+					BufferedImage newImg = ImageIO.read(chart);
+					img = drawBelowImage(img, newImg);
+					chart.delete();
+				}
+				img = drawBelowImage(drawLegend(), img, (int)(WIDTH*3.5 - .5 * LEGEND_WIDTH), 0);
+				break;
+
+			default: break;
+		}
+		ImageIO.write(img, Utils.IMAGE_EXT, new File(fileName));
 		return img;
 	}
 }
