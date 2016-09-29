@@ -14,9 +14,10 @@ class Utils {
 
     static String HOME_DIR = "[Insert default dir]";
     static String DATA_DIR = HOME_DIR + "MasterSynced";
-    static String SURVEY_DIR = HOME_DIR + "../../survey";
-    static String SESSION_FILE = HOME_DIR + "../../Sessions.csv";
-    static String SENSOR_FILE = HOME_DIR + "../../sensor_location.csv";
+    static String ROOT_DIR = HOME_DIR + "../../";
+    static String SURVEY_DIR = ROOT_DIR + "survey";
+    static String SESSION_FILE = ROOT_DIR + "Sessions.csv";
+    static String SENSOR_FILE = ROOT_DIR + "sensor_locations.csv";
 
     static String TITLE = "[Insert default title]";
 
@@ -38,9 +39,10 @@ class Utils {
             if(!new File(DATA_DIR).isDirectory()) {
                 throw new RuntimeException("Can't find MasterSynced");
             }
-            SURVEY_DIR = HOME_DIR + "../../survey";
-            SESSION_FILE = HOME_DIR + "../../Sessions.csv";
-            SENSOR_FILE = HOME_DIR + "../../sensor_location.csv";
+            ROOT_DIR = HOME_DIR + "../../";
+            SURVEY_DIR = ROOT_DIR + "../../survey";
+            SESSION_FILE = ROOT_DIR + "../../Sessions.csv";
+            SENSOR_FILE = ROOT_DIR + "../../sensor_locations.csv";
             TITLE = HOME_DIR.split("/")[HOME_DIR.split("/").length-1];
         }
     }

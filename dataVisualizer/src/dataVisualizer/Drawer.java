@@ -28,9 +28,24 @@ class Drawer extends JPanel {
 	private int currentDay;
 	private int originY;
 
+	private HashMap<String, LegendItem> colors = new HashMap<>();
+
 	Drawer() {
+		populateColors();
 		this.currentDay = 0;
 		this.calcRange();
+	}
+
+	private void populateColors() {
+		colors.put("ignored prompt", new LegendItem("Ignored Prompt", Color.RED, LegendType.EVENT));
+		colors.put("answered prompt", new LegendItem("Answered Prompt", Color.GREEN, LegendType.EVENT));
+		colors.put("call", new LegendItem("Phone Call", Color.YELLOW, LegendType.EVENT));
+		colors.put("text", new LegendItem("Phone SMS", Color.BLUE, LegendType.EVENT));
+		colors.put("phone data", new LegendItem("Phone", Color.BLACK, LegendType.DATA));
+		colors.put("watch data", new LegendItem("Watch", new Color(255,30,0,180), LegendType.DATA));
+		colors.put("phone battery", new LegendItem("Phone", new Color(0,0,255,75), LegendType.BATTERY));
+		colors.put("watch battery", new LegendItem("Watch", new Color(230,230,0,75), LegendType.BATTERY));
+		colors.put("annotation", new LegendItem("Annotation", new Color(230,0,230,180), LegendType.EVENT));
 	}
 
 	private void calcRange() {
@@ -113,21 +128,22 @@ class Drawer extends JPanel {
 		long currentTime = Visualizer.data.get(this.currentDay).date;
 
 		graphPoints = dataToPoints(scaleBatteryData(Visualizer.battery.get(this.currentDay)), xRange, yRange);
-		drawArea(graphPoints, g2, xStart, yStart, Visualizer.colors.get("phone battery").color);
+		drawArea(graphPoints, g2, xStart, yStart, colors.get("phone battery").color);
 
 		graphPoints = dataToPoints(scaleBatteryData(Visualizer.batteryW.get(this.currentDay)), xRange, yRange);
-		drawArea(graphPoints, g2, xStart, yStart, Visualizer.colors.get("watch battery").color);
+		drawArea(graphPoints, g2, xStart, yStart, colors.get("watch battery").color);
 
 		graphPoints = dataToPoints(Visualizer.data.get(this.currentDay), xRange, yRange);
-		drawLinePlot(graphPoints, g2, xStart, yStart, Visualizer.colors.get("phone data").color);
+		drawLinePlot(graphPoints, g2, xStart, yStart, colors.get("phone data").color);
 
 		graphPoints = dataToPoints(Visualizer.dataW.get(this.currentDay), xRange, yRange);
-		drawLinePlot(graphPoints, g2, xStart, yStart,  Visualizer.colors.get("watch data").color);
+		drawLinePlot(graphPoints, g2, xStart, yStart,  colors.get("watch data").color);
 
 		int count = 0;
 		for(String sensorId : Visualizer.sensorLocations.keySet()) {
 			graphPoints = dataToPoints(Visualizer.sensorData.get(sensorId).get(this.currentDay), xRange, yRange);
-			drawLinePlot(graphPoints, g2, xStart, yStart, giveColor(sensorId, ++count, .9, LegendType.DATA));
+			drawLinePlot(graphPoints, g2, xStart, yStart, giveColor(Visualizer.sensorLocations.get(sensorId), ++count,
+					.9, LegendType.DATA));
 		}
 
 		Stroke dashed = new BasicStroke(GRAPH_POINT_WIDTH, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
@@ -137,7 +153,7 @@ class Drawer extends JPanel {
 		for(Event event : Visualizer.calls) {
 			if(currentTime < event.fromDate && event.fromDate < currentTime + 24 * 60 * 60 *1000) {
 				int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
-				g2.setColor(Visualizer.colors.get("call").color);
+				g2.setColor(colors.get("call").color);
 				g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
 			}
 		}
@@ -145,7 +161,7 @@ class Drawer extends JPanel {
 		for(Event event : Visualizer.texts) {
 			if(currentTime < event.fromDate && event.fromDate < currentTime + 24 * 60 * 60 *1000) {
 				int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
-				g2.setColor(Visualizer.colors.get("text").color);
+				g2.setColor(colors.get("text").color);
 				g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
 			}
 		}
@@ -161,7 +177,7 @@ class Drawer extends JPanel {
 						drawCenterString(g2, annotation.text, x + xStart, annotation.getLabelHeight() + yStart);
 						recentAnnotations.put(annotation.text, annotation.fromDate);
 					}
-					g2.setColor(Visualizer.colors.get("annotation").color);
+					g2.setColor(colors.get("annotation").color);
 					g2.fillOval(x + xStart, annotation.getLabelHeight() + yStart,
 							GRAPH_POINT_WIDTH, GRAPH_POINT_WIDTH - 2);
 				}
@@ -172,10 +188,10 @@ class Drawer extends JPanel {
 			if(currentTime < prompt.date && prompt.date < currentTime + 24 * 60 * 60 *1000) {
 				int x = this.scalePoint(prompt.date, 0, xRange, yRange).x + xStart;
 				if (prompt.completed) {
-					g2.setColor(Visualizer.colors.get("answered prompt").color);
+					g2.setColor(colors.get("answered prompt").color);
 					drawCenterString(g2, prompt.posture, x, PADDING + yStart);
 				} else {
-					g2.setColor(Visualizer.colors.get("ignored prompt").color);
+					g2.setColor(colors.get("ignored prompt").color);
 					drawCenterString(g2, prompt.activity, x, PADDING + yStart);
 				}
 				g2.drawLine(x, originY, x, PADDING + yStart);
@@ -202,7 +218,7 @@ class Drawer extends JPanel {
 				p.addPoint(toX, originY);
 				p.addPoint(fromX, originY);
 
-				g2.setColor(giveColor(session.text, (count++) + 51, .5, LegendType.SESSION));
+				g2.setColor(giveColor(session.text, (count++) + 51, .25, LegendType.SESSION));
 				g2.fill(p);
 			}
 		}
@@ -281,11 +297,11 @@ class Drawer extends JPanel {
 	}
 
 	private Color giveColor(String name, int seed, double opacity, LegendType type) {
-		if(!Visualizer.colors.containsKey(name)) {
+		if(!colors.containsKey(name)) {
 			Color randColor = new Color(seed * 947 % 255, seed * 1013 % 255, seed * 1913 % 255, (int)(opacity * 255));
-			Visualizer.colors.put(name, new LegendItem(name, randColor, type));
+			colors.put(name, new LegendItem(name, randColor, type));
 		}
-		return Visualizer.colors.get(name).color;
+		return colors.get(name).color;
 	}
 
 	@Override
@@ -336,12 +352,12 @@ class Drawer extends JPanel {
 			drawCenterString(g2, LegendType.values()[i].name(), x, yStart + count++ * padding);
 
 			g2.setFont(normalFont);
-			for(String name : Visualizer.colors.keySet()) {
-				if(Visualizer.colors.get(name).type == LegendType.values()[i]) {
-					g2.setColor(Visualizer.colors.get(name).color);
-					g2.fillOval(x - LEGEND_WIDTH/LegendType.values().length/4 -20, yStart + count * padding - 6, 6, 6);
+			for(String name : colors.keySet()) {
+				if(colors.get(name).type == LegendType.values()[i]) {
+					g2.setColor(colors.get(name).color);
+					g2.fillOval(x - LEGEND_WIDTH/LegendType.values().length/4 -20, yStart + count * padding - 20, 20, 20);
 					g2.setColor(LINE_COLOR);
-					g2.drawString(Visualizer.colors.get(name).name, x - LEGEND_WIDTH/LegendType.values().length/4,
+					g2.drawString(colors.get(name).name, x - LEGEND_WIDTH/LegendType.values().length/4,
 							yStart + count++ * padding);
 				}
 			}
@@ -349,7 +365,7 @@ class Drawer extends JPanel {
 			legendHeight = Math.max(legendHeight, count * padding);
 		}
 
-		return img.getSubimage(0,0,WIDTH, yStart + legendHeight);
+		return img.getSubimage(0,0,WIDTH, Math.min(yStart + legendHeight, HEIGHT));
 	}
 
 	BufferedImage exportImage(String fileName) throws IOException {

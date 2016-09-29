@@ -12,7 +12,6 @@ public class Visualizer {
 	static ArrayList<Day> data = new ArrayList<>(), dataW = new ArrayList<>(), battery = new ArrayList<>(),
 			batteryW = new ArrayList<>();
 	static HashMap<String, ArrayList<Day>> sensorData = new HashMap<>();
-	static HashMap<String, LegendItem> colors = new HashMap<>();
 	static ArrayList<Prompt> prompts = new ArrayList<>();
 	static ArrayList<Event> annotations = new ArrayList<>(), calls = new ArrayList<>(), texts = new ArrayList<>(),
 			sessions = new ArrayList<>();
@@ -31,7 +30,6 @@ public class Visualizer {
 		}
 		Utils.updateDirs();
 		populateSensorLocations();
-		populateColors();
 
 		ArrayList<String> monthPlots = parseAndDrawMonths();
 
@@ -72,7 +70,7 @@ public class Visualizer {
 		try {
 			File csv = new File(Utils.SENSOR_FILE);
 			if(!csv.exists()) {
-				System.err.println("missing sensors file");
+				System.err.println("missing sensors file " + Utils.SENSOR_FILE);
 				return;
 			}
 			BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(csv.getPath()), "UTF-8"));
@@ -84,7 +82,7 @@ public class Visualizer {
 			}
 			while ((nextLine = in.readLine()) != null) {
 				String[] row = nextLine.split(",");
-				if(row.length == 2) {
+				if(row.length > 1) {
 					sensorLocations.put(row[0], row[1]);
 				}
 			}
@@ -92,18 +90,6 @@ public class Visualizer {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-	}
-
-	private static void populateColors() {
-		colors.put("ignored prompt", new LegendItem("Ignored Prompt", Color.RED, LegendType.EVENT));
-		colors.put("answered prompt", new LegendItem("Answered Prompt", Color.GREEN, LegendType.EVENT));
-		colors.put("call", new LegendItem("Phone Call", Color.YELLOW, LegendType.EVENT));
-		colors.put("text", new LegendItem("Phone SMS", Color.BLUE, LegendType.EVENT));
-		colors.put("phone data", new LegendItem("Phone", Color.BLACK, LegendType.DATA));
-		colors.put("watch data", new LegendItem("Watch", new Color(255,30,0,180), LegendType.DATA));
-		colors.put("phone battery", new LegendItem("Phone", new Color(0,0,255,75), LegendType.BATTERY));
-		colors.put("watch battery", new LegendItem("Watch", new Color(230,230,0,75), LegendType.BATTERY));
-		colors.put("annotation", new LegendItem("Annotation", new Color(230,0,230,180), LegendType.EVENT));
 	}
 
 	// If drawing by months, we'll save every months worth of data and export it to an image to be
@@ -279,7 +265,7 @@ public class Visualizer {
 
 		File folder = new File(Utils.SURVEY_DIR);
 		if(!folder.exists()) {
-			System.err.println("missing survey dir");
+			System.err.println("missing survey dir " + Utils.SURVEY_DIR);
 			return new ArrayList<>();
 		}
 		File[] listOfFiles = folder.listFiles();
@@ -320,7 +306,7 @@ public class Visualizer {
 			String textR = bufferedR.readLine();
 			String[] row;
 
-			while (text != null && textR != null && (row = text.split(",")).length == 7) {
+			while (text != null && textR != null && (row = text.split(",")).length > 6) {
 				DateFormat df = new SimpleDateFormat("\"y-M-d k:m:s\"", Locale.ENGLISH);
 				String[] rowR = textR.split(",");
 
@@ -376,7 +362,7 @@ public class Visualizer {
 		while ((text = buffered.readLine()) != null) {
 			DateFormat df = new SimpleDateFormat("y-M-d k:m:s.S", Locale.ENGLISH);
 			String[] row = text.split(",");
-			if(row.length == 5) {
+			if(row.length > 4) {
 				try {
 					ret.add(new Event(df.parse(row[1]).getTime(), df.parse(row[2]).getTime(), row[4]));
 				} catch (ParseException e) {
@@ -393,8 +379,20 @@ public class Visualizer {
 	private static ArrayList<Event> getSessions() throws IOException, ParseException {
 		ArrayList<Event> ret = new ArrayList<>();
 		File file = new File(Utils.SESSION_FILE);
-		if(!file.exists()) {
-			System.err.println("missing sessions file");
+		File[] files = new File(Utils.ROOT_DIR).listFiles();
+		if(files != null) {
+			for (File f : files) {
+				if (f.exists() && f.getName().contains("Session")) {
+					file = f;
+					break;
+				}
+			}
+			if (!file.exists()) {
+				System.err.println("missing sessions file " + Utils.SESSION_FILE);
+				return ret;
+			}
+		} else {
+			System.err.println("missing root dir " + Utils.ROOT_DIR);
 			return ret;
 		}
 
@@ -405,12 +403,12 @@ public class Visualizer {
 		String text;
 		String[] row;
 
-		while ((text = buffered.readLine()) != null && (row = text.split(",")).length == 13) {
+		while ((text = buffered.readLine()) != null && (row = text.split(",")).length > 3) {
 			DateFormat df = new SimpleDateFormat("M/d/y k:m", Locale.ENGLISH);
 			try {
 				ret.add(new Event(df.parse(row[2]).getTime(), df.parse(row[3]).getTime(), row[1]));
 			} catch(ParseException e) {
-				// Do nothing
+				// do nothing
 			}
 		}
 		buffered.close();
