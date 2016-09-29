@@ -19,32 +19,7 @@ public class Visualizer {
 	static HashMap<String, String> sensorLocations = new HashMap<>();
 
 	public static void main(String[] args) throws IOException, ParseException {
-		Options options = new Options();
-		options.addOption("i", "input-dir", true, "input directory");
-		options.addOption("o", "output-dir", true, "output directory");
-		Option option = new Option("s", "sensors", true, "sensors to display");
-		option.setArgs(Option.UNLIMITED_VALUES);
-		options.addOption(option);
-		CommandLineParser parser = new DefaultParser();
-		try {
-			CommandLine cmd = parser.parse( options, args);
-			String inputDir = cmd.getOptionValue("i");
-			String outputDir = cmd.getOptionValue("o");
-			String[] sensors = cmd.getOptionValues("s");
-
-			if(inputDir != null) {
-				Utils.HOME_DIR = inputDir;
-			}
-			if(outputDir != null) {
-				Utils.TARGET_DIR = outputDir;
-			}
-			if(sensors != null) {
-				Utils.SENSORS = sensors;
-			}
-
-		} catch (org.apache.commons.cli.ParseException e) {
-			e.printStackTrace();
-		}
+		parseArgs(args);
 		validateInputs();
 		Utils.updateDirs();
 		populateSensorLocations();
@@ -62,6 +37,45 @@ public class Visualizer {
 			System.err.println("Couldn't draw data.");
 		}
 		System.out.println("Done!");
+	}
+
+	private static void parseArgs(String[] args) {
+		Options options = new Options();
+		options.addOption("w", "width", true, "image width");
+		options.addOption("h", "height", true, "image row height");
+		options.addOption("i", "input-dir", true, "input directory");
+		options.addOption("o", "output-dir", true, "output directory");
+		Option option = new Option("s", "sensors", true, "sensors to display");
+		option.setArgs(Option.UNLIMITED_VALUES);
+		options.addOption(option);
+		CommandLineParser parser = new DefaultParser();
+		try {
+			CommandLine cmd = parser.parse( options, args);
+			String width = cmd.getOptionValue("w");
+			String height = cmd.getOptionValue("h");
+			String inputDir = cmd.getOptionValue("i");
+			String outputDir = cmd.getOptionValue("o");
+			String[] sensors = cmd.getOptionValues("s");
+
+			if(width != null) {
+				Utils.WIDTH = Integer.parseInt(width);
+			}
+			if(height != null) {
+				Utils.HEIGHT = Integer.parseInt(height);
+			}
+			if(inputDir != null) {
+				Utils.HOME_DIR = inputDir;
+			}
+			if(outputDir != null) {
+				Utils.TARGET_DIR = outputDir;
+			}
+			if(sensors != null) {
+				Utils.SENSORS = sensors;
+			}
+
+		} catch (org.apache.commons.cli.ParseException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private static void validateInputs() {

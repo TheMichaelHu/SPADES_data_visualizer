@@ -3,8 +3,8 @@ package dataVisualizer;
 import java.io.File;
 
 class Utils {
-    static final int WIDTH = 3000;
-    static final int HEIGHT = 500;
+    static int WIDTH = 3000;
+    static int HEIGHT = 500;
     static double MIN_Y = 0.0;
     static double MAX_Y = 0.0;
     static double MAX_Y_CAP = 2.0;
@@ -41,9 +41,9 @@ class Utils {
                 throw new RuntimeException("Can't find MasterSynced");
             }
             ROOT_DIR = HOME_DIR + "../../";
-            SURVEY_DIR = ROOT_DIR + "../../survey";
-            SESSION_FILE = ROOT_DIR + "../../Sessions.csv";
-            SENSOR_FILE = ROOT_DIR + "../../sensor_locations.csv";
+            SURVEY_DIR = ROOT_DIR + "survey";
+            SESSION_FILE = ROOT_DIR + "Sessions.csv";
+            SENSOR_FILE = ROOT_DIR + "sensor_locations.csv";
             TITLE = HOME_DIR.split("/")[HOME_DIR.split("/").length-1];
         }
     }

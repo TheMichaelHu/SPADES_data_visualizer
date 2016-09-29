@@ -17,11 +17,6 @@ class Event {
     }
 
     int getLabelHeight() {
-        int firstLetterVal =
-                text.length() > 0 ? ((int)text.toLowerCase().charAt(0)-(int)'a') * 4 * Utils.HEIGHT/5/26 : 0;
-        int secondLetterVal =
-                text.length() > 1 ? ((int)text.toLowerCase().charAt(1)-(int)'a') * 4 * Utils.HEIGHT/5/26/26 : 0;
-
         return this.text.hashCode() % (int)(Utils.HEIGHT * .8);
     }
 }
