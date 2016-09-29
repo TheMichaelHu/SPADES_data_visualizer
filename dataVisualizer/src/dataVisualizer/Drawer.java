@@ -127,23 +127,31 @@ class Drawer extends JPanel {
 		// draw data
 		long currentTime = Visualizer.data.get(this.currentDay).date;
 
-		graphPoints = dataToPoints(scaleBatteryData(Visualizer.battery.get(this.currentDay)), xRange, yRange);
-		drawArea(graphPoints, g2, xStart, yStart, colors.get("phone battery").color);
 
-		graphPoints = dataToPoints(scaleBatteryData(Visualizer.batteryW.get(this.currentDay)), xRange, yRange);
-		drawArea(graphPoints, g2, xStart, yStart, colors.get("watch battery").color);
-
-		graphPoints = dataToPoints(Visualizer.data.get(this.currentDay), xRange, yRange);
-		drawLinePlot(graphPoints, g2, xStart, yStart, colors.get("phone data").color);
-
-		graphPoints = dataToPoints(Visualizer.dataW.get(this.currentDay), xRange, yRange);
-		drawLinePlot(graphPoints, g2, xStart, yStart,  colors.get("watch data").color);
+		if(Arrays.asList(Utils.SENSORS).contains("phone")) {
+			graphPoints = dataToPoints(scaleBatteryData(Visualizer.battery.get(this.currentDay)), xRange, yRange);
+			drawArea(graphPoints, g2, xStart, yStart, colors.get("phone battery").color);
+		}
+		if(Arrays.asList(Utils.SENSORS).contains("watch")) {
+			graphPoints = dataToPoints(scaleBatteryData(Visualizer.batteryW.get(this.currentDay)), xRange, yRange);
+			drawArea(graphPoints, g2, xStart, yStart, colors.get("watch battery").color);
+		}
+		if(Arrays.asList(Utils.SENSORS).contains("phone")) {
+			graphPoints = dataToPoints(Visualizer.data.get(this.currentDay), xRange, yRange);
+			drawLinePlot(graphPoints, g2, xStart, yStart, colors.get("phone data").color);
+		}
+		if(Arrays.asList(Utils.SENSORS).contains("watch")) {
+			graphPoints = dataToPoints(Visualizer.dataW.get(this.currentDay), xRange, yRange);
+			drawLinePlot(graphPoints, g2, xStart, yStart, colors.get("watch data").color);
+		}
 
 		int count = 0;
-		for(String sensorId : Visualizer.sensorLocations.keySet()) {
-			graphPoints = dataToPoints(Visualizer.sensorData.get(sensorId).get(this.currentDay), xRange, yRange);
-			drawLinePlot(graphPoints, g2, xStart, yStart, giveColor(Visualizer.sensorLocations.get(sensorId), ++count,
-					.9, LegendType.DATA));
+		if(Arrays.asList(Utils.SENSORS).contains("actigraph")) {
+			for (String sensorId : Visualizer.sensorLocations.keySet()) {
+				graphPoints = dataToPoints(Visualizer.sensorData.get(sensorId).get(this.currentDay), xRange, yRange);
+				drawLinePlot(graphPoints, g2, xStart, yStart, giveColor(Visualizer.sensorLocations.get(sensorId), ++count,
+						.9, LegendType.DATA));
+			}
 		}
 
 		Stroke dashed = new BasicStroke(GRAPH_POINT_WIDTH, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,

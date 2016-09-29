@@ -1,6 +1,7 @@
 package dataVisualizer;
 
-import java.awt.*;
+import org.apache.commons.cli.*;
+
 import java.io.*;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -18,16 +19,33 @@ public class Visualizer {
 	static HashMap<String, String> sensorLocations = new HashMap<>();
 
 	public static void main(String[] args) throws IOException, ParseException {
+		Options options = new Options();
+		options.addOption("i", "input-dir", true, "input directory");
+		options.addOption("o", "output-dir", true, "output directory");
+		Option option = new Option("s", "sensors", true, "sensors to display");
+		option.setArgs(Option.UNLIMITED_VALUES);
+		options.addOption(option);
+		CommandLineParser parser = new DefaultParser();
 		try {
-			Utils.HOME_DIR = args[0];
-			Utils.TARGET_DIR = args[1];
+			CommandLine cmd = parser.parse( options, args);
+			String inputDir = cmd.getOptionValue("i");
+			String outputDir = cmd.getOptionValue("o");
+			String[] sensors = cmd.getOptionValues("s");
 
-			validateInputs();
+			if(inputDir != null) {
+				Utils.HOME_DIR = inputDir;
+			}
+			if(outputDir != null) {
+				Utils.TARGET_DIR = outputDir;
+			}
+			if(sensors != null) {
+				Utils.SENSORS = sensors;
+			}
 
-		} catch(IndexOutOfBoundsException e) {
-			System.err.print("Need 2 args: [data dir (should contain mastersynced)] [target dir]");
-			throw e;
+		} catch (org.apache.commons.cli.ParseException e) {
+			e.printStackTrace();
 		}
+		validateInputs();
 		Utils.updateDirs();
 		populateSensorLocations();
 

@@ -12,7 +12,8 @@ class Utils {
     static final double HIGH_PASS_CHUNK = 5 / 3600.0;
     static final String[] IGNORED_ANNOTATIONS = new String[]{"unlabelled", "city", "1 mph", "2 mph"};
 
-    static String HOME_DIR = "[Insert default dir]";
+    static String[] SENSORS = new String[]{"phone", "watch", "actigraph"};
+    static String HOME_DIR = "./";
     static String DATA_DIR = HOME_DIR + "MasterSynced";
     static String ROOT_DIR = HOME_DIR + "../../";
     static String SURVEY_DIR = ROOT_DIR + "survey";
@@ -21,7 +22,7 @@ class Utils {
 
     static String TITLE = "[Insert default title]";
 
-    static String TARGET_DIR = "[Insert default file]";
+    static String TARGET_DIR = "./";
 
     static final String IMAGE_EXT = "png";
 
