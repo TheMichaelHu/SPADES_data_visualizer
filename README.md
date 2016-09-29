@@ -13,6 +13,10 @@ This program supports CLI-style command like arguments:
 ###Example:
 `./dataVisualizer.jar -i [input dir] -o [output dir] -s phone actigraph`
 
+####To increase heap or have output displayed in windows:
+
+`java -Xmx3096m -jar ./dataVisualizer.jar -i [input dir] -o [output dir] -s phone actigraph`
+
 ## Directory Structure
 It's assumed the the SPADES dataset looks something like:
 * SPADES_#
