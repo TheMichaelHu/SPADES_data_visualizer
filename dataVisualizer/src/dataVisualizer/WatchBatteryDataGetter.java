@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -34,7 +35,13 @@ class WatchBatteryDataGetter extends DataGetter {
             for (int i = 0; i < 24; i++) {
                 String HOUR = ((Integer.toString(i).length() < 2) ? ("0" + Integer.toString(i))
                         : (Integer.toString(i)));
-
+                if(Utils.USE_DATE_RANGE) {
+                    LocalDateTime start = LocalDateTime.of(YEAR, MONTH + 1, j, i, 1);
+                    LocalDateTime end = LocalDateTime.of(YEAR, MONTH + 1, j, i, 59);
+                    if(Utils.START_DATE.isAfter(end) || Utils.END_DATE.isBefore(start)) {
+                        continue;
+                    }
+                }
                 InputStream gz;
 
                 try {

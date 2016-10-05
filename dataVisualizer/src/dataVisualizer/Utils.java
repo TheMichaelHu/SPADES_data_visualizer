@@ -1,6 +1,8 @@
 package dataVisualizer;
 
 import java.io.File;
+import java.time.LocalDateTime;
+import java.time.Month;
 
 class Utils {
     static int WIDTH = 3000;
@@ -8,7 +10,7 @@ class Utils {
     static double MIN_Y = 0.0;
     static double MAX_Y = 0.0;
     static double MAX_Y_CAP = 2.0;
-    static final double CHUNK = 60 / 3600.0;
+    static double CHUNK = 60 / 3600.0;
     static final double HIGH_PASS_CHUNK = 5 / 3600.0;
     static final String[] IGNORED_ANNOTATIONS = new String[]{"unlabelled", "city", "1 mph", "2 mph"};
 
@@ -19,16 +21,19 @@ class Utils {
     static String SURVEY_DIR = ROOT_DIR + "survey";
     static String SESSION_FILE = ROOT_DIR + "Sessions.csv";
     static String SENSOR_FILE = ROOT_DIR + "sensor_locations.csv";
-
     static String TITLE = "[Insert default title]";
-
     static String TARGET_DIR = "./";
 
     static final String IMAGE_EXT = "png";
 
+
+    static LocalDateTime START_DATE = LocalDateTime.of(2016, Month.FEBRUARY, 16, 9, 1);
+    static LocalDateTime END_DATE = LocalDateTime.of(2016, Month.FEBRUARY, 16, 11, 59);
+    static boolean USE_DATE_RANGE = false;
+    static boolean LAB_ONLY = false;
     static final boolean USE_DYNAMIC_HEIGHT = true;
 
-    static final ChartType CHART_TYPE = ChartType.byWeek;
+    static ChartType CHART_TYPE = ChartType.byWeek;
 
     enum ChartType {
         byWeek, byDay
@@ -45,6 +50,9 @@ class Utils {
             SESSION_FILE = ROOT_DIR + "Sessions.csv";
             SENSOR_FILE = ROOT_DIR + "sensor_locations.csv";
             TITLE = HOME_DIR.split("/")[HOME_DIR.split("/").length-1];
+            if(LAB_ONLY) {
+                TITLE += "_lab";
+            }
         }
     }
 }

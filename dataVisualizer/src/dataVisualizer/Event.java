@@ -13,7 +13,6 @@ class Event {
         if(text.length() > maxLength) {
             this.text = text.substring(0, maxLength) + "...";
         }
-
     }
 
     int getLabelHeight() {

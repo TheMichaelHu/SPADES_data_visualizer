@@ -5,6 +5,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.time.ZoneId;
 import java.util.*;
 
 import javax.imageio.ImageIO;
@@ -81,11 +82,13 @@ class Drawer extends JPanel {
 		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
 				RenderingHints.VALUE_ANTIALIAS_ON);
 
-		drawPlot(g2, start, end, 10, HEIGHT);
+		if(!Visualizer.data.isEmpty()) {
+			drawPlot(g2, start, end, 10, HEIGHT);
 
-		g2.setColor(LINE_COLOR);
-		drawCenterString(g2, new SimpleDateFormat("MM-dd-yyyy").format(
-				new Date(Visualizer.data.get(this.currentDay).date)), (start + end)/2, 0);
+			g2.setColor(LINE_COLOR);
+			drawCenterString(g2, new SimpleDateFormat("MM-dd-yyyy").format(
+					new Date(Visualizer.data.get(this.currentDay).date)), (start + end)/2, 0);
+		}
 	}
 
 	private void drawPlot(Graphics2D g2, int xStart, int xEnd, int yStart, int yEnd) {
@@ -159,7 +162,10 @@ class Drawer extends JPanel {
 		g2.setStroke(dashed);
 
 		for(Event event : Visualizer.calls) {
-			if(currentTime < event.fromDate && event.fromDate < currentTime + 24 * 60 * 60 *1000) {
+			boolean inDateRange = !Utils.USE_DATE_RANGE ||
+					(event.fromDate >= Utils.START_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000 &&
+							event.fromDate <= Utils.END_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000);
+			if(currentTime < event.fromDate && event.fromDate < currentTime + 24 * 60 * 60 *1000 && inDateRange) {
 				int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
 				g2.setColor(colors.get("call").color);
 				g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
@@ -167,7 +173,10 @@ class Drawer extends JPanel {
 		}
 
 		for(Event event : Visualizer.texts) {
-			if(currentTime < event.fromDate && event.fromDate < currentTime + 24 * 60 * 60 *1000) {
+			boolean inDateRange = !Utils.USE_DATE_RANGE ||
+					(event.fromDate >= Utils.START_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000 &&
+							event.fromDate <= Utils.END_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000);
+			if(currentTime < event.fromDate && event.fromDate < currentTime + 24 * 60 * 60 *1000 && inDateRange) {
 				int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
 				g2.setColor(colors.get("text").color);
 				g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
@@ -176,8 +185,12 @@ class Drawer extends JPanel {
 
 		HashMap<String, Long> recentAnnotations = new HashMap<>();
 		for(Event annotation : Visualizer.annotations) {
+			boolean inDateRange = !Utils.USE_DATE_RANGE ||
+					(annotation.fromDate >= Utils.START_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000 &&
+							annotation.fromDate <= Utils.END_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000);
 			if(!Arrays.asList(Utils.IGNORED_ANNOTATIONS).contains(annotation.text.toLowerCase().trim())) {
-				if(currentTime < annotation.fromDate && annotation.fromDate < currentTime + 24 * 60 * 60 *1000) {
+				if(currentTime < annotation.fromDate && annotation.fromDate < currentTime + 24 * 60 * 60 *1000 &&
+						inDateRange) {
 					int x = this.scalePoint(annotation.fromDate, 0, xRange, yRange).x;
 					g2.setColor(LINE_COLOR);
 					if(recentAnnotations.get(annotation.text) == null ||
@@ -186,14 +199,17 @@ class Drawer extends JPanel {
 						recentAnnotations.put(annotation.text, annotation.fromDate);
 					}
 					g2.setColor(colors.get("annotation").color);
-					g2.fillOval(x + xStart, annotation.getLabelHeight() + yStart,
+					g2.fillOval(x + xStart, annotation.getLabelHeight() + yStart + PADDING * 2,
 							GRAPH_POINT_WIDTH, GRAPH_POINT_WIDTH - 2);
 				}
 			}
 		}
 
 		for(Prompt prompt : Visualizer.prompts) {
-			if(currentTime < prompt.date && prompt.date < currentTime + 24 * 60 * 60 *1000) {
+			boolean inDateRange = !Utils.USE_DATE_RANGE ||
+					(prompt.date >= Utils.START_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000 &&
+							prompt.date <= Utils.END_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000);
+			if(currentTime < prompt.date && prompt.date < currentTime + 24 * 60 * 60 *1000 && inDateRange) {
 				int x = this.scalePoint(prompt.date, 0, xRange, yRange).x + xStart;
 				if (prompt.completed) {
 					g2.setColor(colors.get("answered prompt").color);
@@ -208,6 +224,9 @@ class Drawer extends JPanel {
 
 		count = 0;
 		for(Event session : Visualizer.sessions) {
+			boolean inDateRange = !Utils.USE_DATE_RANGE ||
+					(session.fromDate >= Utils.START_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000 &&
+							session.toDate <= Utils.END_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000);
 			int fromX = this.scalePoint(session.fromDate, 0, xRange, yRange).x + xStart;
 			int toX = this.scalePoint(session.toDate, 0, xRange, yRange).x + xStart;
 
@@ -219,7 +238,7 @@ class Drawer extends JPanel {
 						xRange, yRange).x + xStart;
 			}
 
-			if(fromX < toX) {
+			if(fromX < toX && inDateRange) {
 				Polygon p = new Polygon();
 				p.addPoint(fromX, PADDING + yStart);
 				p.addPoint(toX, PADDING + yStart);
@@ -380,7 +399,6 @@ class Drawer extends JPanel {
 		this.currentDay = 0;
 		this.calcRange();
 		BufferedImage img = this.drawImage();
-		System.out.println(new Date(Visualizer.data.get(this.currentDay).date) + " drawn!");
 		
 		for(int i = 1; i < Visualizer.data.size(); i++) {
 			this.currentDay = i;

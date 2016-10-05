@@ -6,6 +6,9 @@ import java.io.*;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
@@ -48,6 +51,7 @@ public class Visualizer {
 		Option option = new Option("s", "sensors", true, "sensors to display");
 		option.setArgs(Option.UNLIMITED_VALUES);
 		options.addOption(option);
+		options.addOption("l", "lab-only", false, "draw only lab data");
 		CommandLineParser parser = new DefaultParser();
 		try {
 			CommandLine cmd = parser.parse( options, args);
@@ -71,6 +75,14 @@ public class Visualizer {
 			}
 			if(sensors != null) {
 				Utils.SENSORS = sensors;
+			}
+			if(cmd.hasOption("l")) {
+				Utils.CHART_TYPE = Utils.ChartType.byDay;
+				Utils.USE_DATE_RANGE = true;
+				Utils.LAB_ONLY = true;
+				Utils.WIDTH *= 3;
+				Utils.HEIGHT *= 2;
+				Utils.CHUNK = 40 / 3600.0;
 			}
 
 		} catch (org.apache.commons.cli.ParseException e) {
@@ -158,6 +170,17 @@ public class Visualizer {
 			for (File month : listOfMonths) {
 				if (!month.getName().matches("[01][0-9]")) {
 					continue;
+				}
+				if(Utils.USE_DATE_RANGE) {
+					LocalDate arbDate = LocalDate.of(Integer.parseInt(year.getName()),
+							Integer.parseInt(month.getName()), 10);
+					LocalDateTime start = LocalDateTime.of(Integer.parseInt(year.getName()),
+							Integer.parseInt(month.getName()), 1, 1, 1);
+					LocalDateTime end = LocalDateTime.of(Integer.parseInt(year.getName()),
+							Integer.parseInt(month.getName()), arbDate.lengthOfMonth(), 23, 59);
+					if(Utils.START_DATE.isAfter(end) || Utils.END_DATE.isBefore(start)) {
+						continue;
+					}
 				}
 				gatherData(month, year);
 				String fileName = String.format("%s%s_%s_%s.%s",
@@ -414,7 +437,7 @@ public class Visualizer {
 		File[] files = new File(Utils.ROOT_DIR).listFiles();
 		if(files != null) {
 			for (File f : files) {
-				if (f.exists() && f.getName().contains("Session")) {
+				if (f.exists() && f.getName().toLowerCase().contains("session")) {
 					file = f;
 					break;
 				}
@@ -437,6 +460,10 @@ public class Visualizer {
 
 		while ((text = buffered.readLine()) != null && (row = text.split(",")).length > 3) {
 			DateFormat df = new SimpleDateFormat("M/d/y k:m", Locale.ENGLISH);
+			if(Utils.LAB_ONLY && row[1].toLowerCase().contains("lab")) {
+				Utils.START_DATE = LocalDateTime.ofInstant(df.parse(row[2]).toInstant(), ZoneId.systemDefault());
+				Utils.END_DATE = LocalDateTime.ofInstant(df.parse(row[3]).toInstant(), ZoneId.systemDefault());
+			}
 			try {
 				ret.add(new Event(df.parse(row[2]).getTime(), df.parse(row[3]).getTime(), row[1]));
 			} catch(ParseException e) {
