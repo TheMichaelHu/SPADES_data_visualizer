@@ -31,6 +31,7 @@ class Utils {
     static LocalDateTime END_DATE = LocalDateTime.of(2016, Month.FEBRUARY, 16, 11, 59);
     static boolean USE_DATE_RANGE = false;
     static boolean LAB_ONLY = false;
+    static boolean TWO_DAY_ONLY = false;
     static final boolean USE_DYNAMIC_HEIGHT = true;
 
     static ChartType CHART_TYPE = ChartType.byWeek;
@@ -52,6 +53,8 @@ class Utils {
             TITLE = HOME_DIR.split("/")[HOME_DIR.split("/").length-1];
             if(LAB_ONLY) {
                 TITLE += "_lab";
+            } else if(TWO_DAY_ONLY) {
+                TITLE += "_2day";
             }
         }
     }

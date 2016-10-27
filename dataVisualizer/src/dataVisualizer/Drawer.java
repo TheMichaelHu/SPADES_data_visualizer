@@ -17,7 +17,7 @@ class Drawer extends JPanel {
 	// Preferences
 	private final int WIDTH = Utils.WIDTH;
 	private final int HEIGHT = Utils.HEIGHT;
-	private final int LEGEND_WIDTH = WIDTH/3;
+	private final int LEGEND_WIDTH = Math.max(WIDTH/3, 1000);
 
 	// Constants
 	private final int PADDING = 30;
@@ -65,6 +65,23 @@ class Drawer extends JPanel {
 	}
 
 	private Point scalePoint(long x, double y, int width, int height) {
+		if(Utils.TWO_DAY_ONLY || Utils.LAB_ONLY) {
+			long start = Utils.START_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000;
+			long end = Utils.END_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000;
+			if(minX < start && start - minX < 24 * 60 * 60 * 1000) {
+				x -= start - minX;
+			}
+			if(maxX > end && maxX-end < 24 * 60 * 60 * 1000) {
+				if (minX < start) {
+					width *= (24 * 60 * 60 * 1000.0)/(end - start);
+				} else {
+					width *= (24 * 60 * 60 * 1000.0)/(end - minX);
+				}
+			} else if(minX < start && start - minX < 24 * 60 * 60 * 1000) {
+				width *= (24 * 60 * 60 * 1000.0)/(maxX - start);
+			}
+		}
+
 		double scaleX = ((double)width - 2 * PADDING) / (this.maxX - this.minX);
 		double scaleY = ((double)height - 2 * PADDING) / (Utils.MAX_Y - Utils.MIN_Y);
 		int scaledX = PADDING + (int) ((x - this.minX) * scaleX);

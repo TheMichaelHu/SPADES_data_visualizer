@@ -52,6 +52,7 @@ public class Visualizer {
 		option.setArgs(Option.UNLIMITED_VALUES);
 		options.addOption(option);
 		options.addOption("l", "lab-only", false, "draw only lab data");
+		options.addOption("t", "two-day-only", false, "draw only 2 day data");
 		CommandLineParser parser = new DefaultParser();
 		try {
 			CommandLine cmd = parser.parse( options, args);
@@ -76,10 +77,11 @@ public class Visualizer {
 			if(sensors != null) {
 				Utils.SENSORS = sensors;
 			}
-			if(cmd.hasOption("l")) {
+			if(cmd.hasOption("l") || cmd.hasOption("t")) {
 				Utils.CHART_TYPE = Utils.ChartType.byDay;
 				Utils.USE_DATE_RANGE = true;
-				Utils.LAB_ONLY = true;
+				Utils.LAB_ONLY = cmd.hasOption("l");
+				Utils.TWO_DAY_ONLY = cmd.hasOption("t");
 				Utils.WIDTH *= 3;
 				Utils.HEIGHT *= 2;
 				Utils.CHUNK = 40 / 3600.0;
@@ -461,6 +463,9 @@ public class Visualizer {
 		while ((text = buffered.readLine()) != null && (row = text.split(",")).length > 3) {
 			DateFormat df = new SimpleDateFormat("M/d/y k:m", Locale.ENGLISH);
 			if(Utils.LAB_ONLY && row[1].toLowerCase().contains("lab")) {
+				Utils.START_DATE = LocalDateTime.ofInstant(df.parse(row[2]).toInstant(), ZoneId.systemDefault());
+				Utils.END_DATE = LocalDateTime.ofInstant(df.parse(row[3]).toInstant(), ZoneId.systemDefault());
+			} else if(Utils.TWO_DAY_ONLY && row[1].toLowerCase().contains("2day")) {
 				Utils.START_DATE = LocalDateTime.ofInstant(df.parse(row[2]).toInstant(), ZoneId.systemDefault());
 				Utils.END_DATE = LocalDateTime.ofInstant(df.parse(row[3]).toInstant(), ZoneId.systemDefault());
 			}
