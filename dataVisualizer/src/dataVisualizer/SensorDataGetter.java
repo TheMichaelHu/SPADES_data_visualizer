@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.zip.GZIPInputStream;
@@ -74,8 +75,16 @@ class SensorDataGetter extends DataGetter {
 
                             for(File alpha : listOfTemps) {
                                 if(alpha.getName().toLowerCase().matches(".*" + sensorId.toLowerCase() + ".*sensor\\.csv\\.gz")) {
-                                    file = alpha;
-                                    break;
+                                    if(Arrays.asList(Utils.SENSORS).contains("actigraph")) {
+                                        file = alpha;
+                                        break;
+                                    }
+                                    for(String pattern : Utils.SENSORS) {
+                                        if(alpha.getName().toLowerCase().contains(pattern.toLowerCase())) {
+                                            file = alpha;
+                                            break;
+                                        }
+                                    }
                                 }
                             }
                             if(file == null) {

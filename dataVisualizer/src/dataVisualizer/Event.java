@@ -1,5 +1,7 @@
 package dataVisualizer;
 
+import java.awt.*;
+
 class Event {
     long fromDate;
     Long toDate;
@@ -17,5 +19,9 @@ class Event {
 
     int getLabelHeight() {
         return this.text.hashCode() % (int)(Utils.HEIGHT * .8);
+    }
+    Color getLabelColor() {
+        int colorVal = ((this.text.hashCode() % 255) + 255) % 255; // java % can be negative, it's absurd
+        return new Color(colorVal, 0, colorVal);
     }
 }

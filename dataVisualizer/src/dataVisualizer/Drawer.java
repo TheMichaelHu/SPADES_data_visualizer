@@ -166,12 +166,10 @@ class Drawer extends JPanel {
 		}
 
 		int count = 0;
-		if(Arrays.asList(Utils.SENSORS).contains("actigraph")) {
-			for (String sensorId : Visualizer.sensorLocations.keySet()) {
-				graphPoints = dataToPoints(Visualizer.sensorData.get(sensorId).get(this.currentDay), xRange, yRange);
-				drawLinePlot(graphPoints, g2, xStart, yStart, giveColor(Visualizer.sensorLocations.get(sensorId), ++count,
-						.9, LegendType.DATA));
-			}
+		for (String sensorId : Visualizer.sensorLocations.keySet()) {
+			graphPoints = dataToPoints(Visualizer.sensorData.get(sensorId).get(this.currentDay), xRange, yRange);
+			drawLinePlot(graphPoints, g2, xStart, yStart, giveColor(Visualizer.sensorLocations.get(sensorId), ++count,
+					.9, LegendType.DATA));
 		}
 
 		Stroke dashed = new BasicStroke(GRAPH_POINT_WIDTH, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
@@ -208,16 +206,27 @@ class Drawer extends JPanel {
 			if(!Arrays.asList(Utils.IGNORED_ANNOTATIONS).contains(annotation.text.toLowerCase().trim())) {
 				if(currentTime < annotation.fromDate && annotation.fromDate < currentTime + 24 * 60 * 60 *1000 &&
 						inDateRange) {
-					int x = this.scalePoint(annotation.fromDate, 0, xRange, yRange).x;
-					g2.setColor(LINE_COLOR);
-					if(recentAnnotations.get(annotation.text) == null ||
-							annotation.fromDate - recentAnnotations.get(annotation.text) >= 60 * 60 * 1000) {
-						drawCenterString(g2, annotation.text, x + xStart, annotation.getLabelHeight() + yStart);
+					int xFrom = this.scalePoint(annotation.fromDate, 0, xRange, yRange).x;
+					int xTo = xFrom + GRAPH_POINT_WIDTH;
+//					g2.setColor(LINE_COLOR);
+					g2.setColor(annotation.getLabelColor());
+					if(recentAnnotations.get(annotation.text) != null) {
+						if(annotation.fromDate - recentAnnotations.get(annotation.text) <= Utils.EVENT_JOIN_THRESH) {
+							xFrom = this.scalePoint(recentAnnotations.get(annotation.text), 0, xRange, yRange).x;
+						} else {
+							drawCenterString(g2, annotation.text, xFrom + xStart, annotation.getLabelHeight() + yStart);
+						}
+						recentAnnotations.put(annotation.text, annotation.fromDate);
+					} else {
+						drawCenterString(g2, annotation.text, xFrom + xStart, annotation.getLabelHeight() + yStart);
 						recentAnnotations.put(annotation.text, annotation.fromDate);
 					}
-					g2.setColor(colors.get("annotation").color);
-					g2.fillOval(x + xStart, annotation.getLabelHeight() + yStart + PADDING * 2,
-							GRAPH_POINT_WIDTH, GRAPH_POINT_WIDTH - 2);
+//					g2.setColor(colors.get("annotation").color);
+					g2.setStroke(new BasicStroke(GRAPH_POINT_WIDTH-2));
+//					g2.fillOval(x + xStart, annotation.getLabelHeight() + yStart + PADDING * 2,
+//							GRAPH_POINT_WIDTH, GRAPH_POINT_WIDTH - 2);
+					g2.drawLine(xFrom + xStart, annotation.getLabelHeight() + yStart + PADDING,
+							xTo + xStart, annotation.getLabelHeight() + yStart + PADDING);
 				}
 			}
 		}
@@ -233,7 +242,7 @@ class Drawer extends JPanel {
 					drawCenterString(g2, prompt.posture, x, PADDING + yStart);
 				} else {
 					g2.setColor(colors.get("ignored prompt").color);
-					drawCenterString(g2, prompt.activity, x, PADDING + yStart);
+//					drawCenterString(g2, prompt.activity, x, PADDING + yStart);
 				}
 				g2.drawLine(x, originY, x, PADDING + yStart);
 			}

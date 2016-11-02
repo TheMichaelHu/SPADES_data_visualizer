@@ -12,6 +12,7 @@ class Utils {
     static double MAX_Y_CAP = 2.0;
     static double CHUNK = 60 / 3600.0;
     static final double HIGH_PASS_CHUNK = 5 / 3600.0;
+    static final double EVENT_JOIN_THRESH = 60 * 60 * 1000;
     static final String[] IGNORED_ANNOTATIONS = new String[]{"unlabelled", "city", "1 mph", "2 mph"};
 
     static String[] SENSORS = new String[]{"phone", "watch", "actigraph"};
