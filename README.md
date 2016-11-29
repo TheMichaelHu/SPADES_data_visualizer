@@ -4,6 +4,8 @@ Generates visualization of SPADES data
 ## How to use
 Create an executable `.jar` file using the source code. Be sure to include the apache commons cli external library.
 This program supports CLI-style command like arguments:
+* -l, --lab, draw only lab data
+* -t, --two-day, draw only two-day data
 * -w, --width, image width
 * -h, --height, image row height
 * -i, --input-dir, dir containing `MasterSynced` directory
