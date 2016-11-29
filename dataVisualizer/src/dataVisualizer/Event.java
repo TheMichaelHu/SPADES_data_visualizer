@@ -18,7 +18,8 @@ class Event {
     }
 
     int getLabelHeight() {
-        return this.text.hashCode() % (int)(Utils.HEIGHT * .8);
+        int height = (int)(Utils.HEIGHT * .8);
+        return ((this.text.hashCode() % height) + height) % height; // java % can be negative, it's absurd
     }
     Color getLabelColor() {
         int colorVal = ((this.text.hashCode() % 255) + 255) % 255; // java % can be negative, it's absurd

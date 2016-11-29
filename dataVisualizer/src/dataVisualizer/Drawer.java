@@ -29,24 +29,9 @@ class Drawer extends JPanel {
 	private int currentDay;
 	private int originY;
 
-	private HashMap<String, LegendItem> colors = new HashMap<>();
-
 	Drawer() {
-		populateColors();
 		this.currentDay = 0;
 		this.calcRange();
-	}
-
-	private void populateColors() {
-		colors.put("ignored prompt", new LegendItem("Ignored Prompt", Color.RED, LegendType.EVENT));
-		colors.put("answered prompt", new LegendItem("Answered Prompt", Color.GREEN, LegendType.EVENT));
-		colors.put("call", new LegendItem("Phone Call", Color.YELLOW, LegendType.EVENT));
-		colors.put("text", new LegendItem("Phone SMS", Color.BLUE, LegendType.EVENT));
-		colors.put("phone data", new LegendItem("Phone", Color.BLACK, LegendType.DATA));
-		colors.put("watch data", new LegendItem("Watch", new Color(255,30,0,180), LegendType.DATA));
-		colors.put("phone battery", new LegendItem("Phone", new Color(0,0,255,75), LegendType.BATTERY));
-		colors.put("watch battery", new LegendItem("Watch", new Color(230,230,0,75), LegendType.BATTERY));
-		colors.put("annotation", new LegendItem("Annotation", new Color(230,0,230,180), LegendType.EVENT));
 	}
 
 	private void calcRange() {
@@ -150,19 +135,19 @@ class Drawer extends JPanel {
 
 		if(Arrays.asList(Utils.SENSORS).contains("phone")) {
 			graphPoints = dataToPoints(scaleBatteryData(Visualizer.battery.get(this.currentDay)), xRange, yRange);
-			drawArea(graphPoints, g2, xStart, yStart, colors.get("phone battery").color);
+			drawArea(graphPoints, g2, xStart, yStart, Visualizer.colors.get("phone battery").color);
 		}
 		if(Arrays.asList(Utils.SENSORS).contains("watch")) {
 			graphPoints = dataToPoints(scaleBatteryData(Visualizer.batteryW.get(this.currentDay)), xRange, yRange);
-			drawArea(graphPoints, g2, xStart, yStart, colors.get("watch battery").color);
+			drawArea(graphPoints, g2, xStart, yStart, Visualizer.colors.get("watch battery").color);
 		}
 		if(Arrays.asList(Utils.SENSORS).contains("phone")) {
 			graphPoints = dataToPoints(Visualizer.data.get(this.currentDay), xRange, yRange);
-			drawLinePlot(graphPoints, g2, xStart, yStart, colors.get("phone data").color);
+			drawLinePlot(graphPoints, g2, xStart, yStart, Visualizer.colors.get("phone data").color);
 		}
 		if(Arrays.asList(Utils.SENSORS).contains("watch")) {
 			graphPoints = dataToPoints(Visualizer.dataW.get(this.currentDay), xRange, yRange);
-			drawLinePlot(graphPoints, g2, xStart, yStart, colors.get("watch data").color);
+			drawLinePlot(graphPoints, g2, xStart, yStart, Visualizer.colors.get("watch data").color);
 		}
 
 		int count = 0;
@@ -182,7 +167,7 @@ class Drawer extends JPanel {
 							event.fromDate <= Utils.END_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000);
 			if(currentTime < event.fromDate && event.fromDate < currentTime + 24 * 60 * 60 *1000 && inDateRange) {
 				int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
-				g2.setColor(colors.get("call").color);
+				g2.setColor(Visualizer.colors.get("call").color);
 				g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
 			}
 		}
@@ -193,8 +178,25 @@ class Drawer extends JPanel {
 							event.fromDate <= Utils.END_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000);
 			if(currentTime < event.fromDate && event.fromDate < currentTime + 24 * 60 * 60 *1000 && inDateRange) {
 				int x = this.scalePoint(event.fromDate, 0, xRange, yRange).x;
-				g2.setColor(colors.get("text").color);
+				g2.setColor(Visualizer.colors.get("text").color);
 				g2.drawLine(x + xStart, originY, x + xStart, PADDING + yStart);
+			}
+		}
+
+		for(Prompt prompt : Visualizer.prompts) {
+			boolean inDateRange = !Utils.USE_DATE_RANGE ||
+					(prompt.date >= Utils.START_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000 &&
+							prompt.date <= Utils.END_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000);
+			if(currentTime < prompt.date && prompt.date < currentTime + 24 * 60 * 60 *1000 && inDateRange) {
+				int x = this.scalePoint(prompt.date, 0, xRange, yRange).x + xStart;
+				if (prompt.completed) {
+					g2.setColor(Visualizer.colors.get("answered prompt").color);
+					drawCenterString(g2, prompt.posture, x, PADDING + yStart);
+				} else {
+					g2.setColor(Visualizer.colors.get("ignored prompt").color);
+					drawCenterString(g2, prompt.activity, x, PADDING + yStart);
+				}
+				g2.drawLine(x, originY, x, PADDING + yStart);
 			}
 		}
 
@@ -207,44 +209,27 @@ class Drawer extends JPanel {
 				if(currentTime < annotation.fromDate && annotation.fromDate < currentTime + 24 * 60 * 60 *1000 &&
 						inDateRange) {
 					int xFrom = this.scalePoint(annotation.fromDate, 0, xRange, yRange).x;
-					int xTo = xFrom + GRAPH_POINT_WIDTH;
+					int xTo = this.scalePoint(Math.min(annotation.toDate, currentTime + 24 * 60 * 60 * 1000), 0, xRange, yRange).x;
 //					g2.setColor(LINE_COLOR);
 					g2.setColor(annotation.getLabelColor());
 					if(recentAnnotations.get(annotation.text) != null) {
 						if(annotation.fromDate - recentAnnotations.get(annotation.text) <= Utils.EVENT_JOIN_THRESH) {
 							xFrom = this.scalePoint(recentAnnotations.get(annotation.text), 0, xRange, yRange).x;
 						} else {
-							drawCenterString(g2, annotation.text, xFrom + xStart, annotation.getLabelHeight() + yStart);
+							g2.drawString(annotation.text, xFrom + xStart, annotation.getLabelHeight() + 4*PADDING/5 + yStart);
 						}
 						recentAnnotations.put(annotation.text, annotation.fromDate);
 					} else {
-						drawCenterString(g2, annotation.text, xFrom + xStart, annotation.getLabelHeight() + yStart);
+						g2.drawString(annotation.text, xFrom + xStart, annotation.getLabelHeight() + 4*PADDING/5 + yStart);
 						recentAnnotations.put(annotation.text, annotation.fromDate);
 					}
-//					g2.setColor(colors.get("annotation").color);
+//					g2.setColor(Visualizer.colors.get("annotation").color);
 					g2.setStroke(new BasicStroke(GRAPH_POINT_WIDTH-2));
 //					g2.fillOval(x + xStart, annotation.getLabelHeight() + yStart + PADDING * 2,
 //							GRAPH_POINT_WIDTH, GRAPH_POINT_WIDTH - 2);
 					g2.drawLine(xFrom + xStart, annotation.getLabelHeight() + yStart + PADDING,
 							xTo + xStart, annotation.getLabelHeight() + yStart + PADDING);
 				}
-			}
-		}
-
-		for(Prompt prompt : Visualizer.prompts) {
-			boolean inDateRange = !Utils.USE_DATE_RANGE ||
-					(prompt.date >= Utils.START_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000 &&
-							prompt.date <= Utils.END_DATE.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000);
-			if(currentTime < prompt.date && prompt.date < currentTime + 24 * 60 * 60 *1000 && inDateRange) {
-				int x = this.scalePoint(prompt.date, 0, xRange, yRange).x + xStart;
-				if (prompt.completed) {
-					g2.setColor(colors.get("answered prompt").color);
-					drawCenterString(g2, prompt.posture, x, PADDING + yStart);
-				} else {
-					g2.setColor(colors.get("ignored prompt").color);
-//					drawCenterString(g2, prompt.activity, x, PADDING + yStart);
-				}
-				g2.drawLine(x, originY, x, PADDING + yStart);
 			}
 		}
 
@@ -350,11 +335,11 @@ class Drawer extends JPanel {
 	}
 
 	private Color giveColor(String name, int seed, double opacity, LegendType type) {
-		if(!colors.containsKey(name)) {
+		if(!Visualizer.colors.containsKey(name)) {
 			Color randColor = new Color(seed * 947 % 255, seed * 1013 % 255, seed * 1913 % 255, (int)(opacity * 255));
-			colors.put(name, new LegendItem(name, randColor, type));
+			Visualizer.colors.put(name, new LegendItem(name, randColor, type));
 		}
-		return colors.get(name).color;
+		return Visualizer.colors.get(name).color;
 	}
 
 	@Override
@@ -405,12 +390,12 @@ class Drawer extends JPanel {
 			drawCenterString(g2, LegendType.values()[i].name(), x, yStart + count++ * padding);
 
 			g2.setFont(normalFont);
-			for(String name : colors.keySet()) {
-				if(colors.get(name).type == LegendType.values()[i]) {
-					g2.setColor(colors.get(name).color);
+			for(String name : Visualizer.colors.keySet()) {
+				if(Visualizer.colors.get(name).type == LegendType.values()[i]) {
+					g2.setColor(Visualizer.colors.get(name).color);
 					g2.fillOval(x - LEGEND_WIDTH/LegendType.values().length/4 -20, yStart + count * padding - 20, 20, 20);
 					g2.setColor(LINE_COLOR);
-					g2.drawString(colors.get(name).name, x - LEGEND_WIDTH/LegendType.values().length/4,
+					g2.drawString(Visualizer.colors.get(name).name, x - LEGEND_WIDTH/LegendType.values().length/4,
 							yStart + count++ * padding);
 				}
 			}

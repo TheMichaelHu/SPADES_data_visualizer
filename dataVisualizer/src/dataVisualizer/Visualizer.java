@@ -2,6 +2,7 @@ package dataVisualizer;
 
 import org.apache.commons.cli.*;
 
+import java.awt.*;
 import java.io.*;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -20,11 +21,13 @@ public class Visualizer {
 	static ArrayList<Event> annotations = new ArrayList<>(), calls = new ArrayList<>(), texts = new ArrayList<>(),
 			sessions = new ArrayList<>();
 	static HashMap<String, String> sensorLocations = new HashMap<>();
+	static HashMap<String, LegendItem> colors = new HashMap<>();
 
 	public static void main(String[] args) throws IOException, ParseException {
 		parseArgs(args);
 		validateInputs();
 		Utils.updateDirs();
+		populateColors();
 		populateSensorLocations();
 
 		ArrayList<String> monthPlots = parseAndDrawMonths();
@@ -110,6 +113,18 @@ public class Visualizer {
 		} else {
 			throw new RuntimeException(Utils.TARGET_DIR + " is not a directory");
 		}
+	}
+
+	private static void populateColors() {
+		colors.put("ignored prompt", new LegendItem("Ignored Prompt", Color.RED, LegendType.EVENT));
+		colors.put("answered prompt", new LegendItem("Answered Prompt", Color.GREEN, LegendType.EVENT));
+		colors.put("call", new LegendItem("Phone Call", Color.YELLOW, LegendType.EVENT));
+		colors.put("text", new LegendItem("Phone SMS", Color.BLUE, LegendType.EVENT));
+		colors.put("phone data", new LegendItem("Phone", Color.BLACK, LegendType.DATA));
+		colors.put("watch data", new LegendItem("Watch", new Color(255,30,0,180), LegendType.DATA));
+		colors.put("phone battery", new LegendItem("Phone", new Color(0,0,255,75), LegendType.BATTERY));
+		colors.put("watch battery", new LegendItem("Watch", new Color(230,230,0,75), LegendType.BATTERY));
+		colors.put("annotation", new LegendItem("Annotation", new Color(230,0,230,180), LegendType.EVENT));
 	}
 
 	private static void populateSensorLocations() {
@@ -365,9 +380,9 @@ public class Visualizer {
 
 			while (text != null && textR != null && (row = text.split(",")).length > 6) {
 				DateFormat df = new SimpleDateFormat("\"y-M-d k:m:s\"", Locale.ENGLISH);
-				String[] rowR = textR.split(",");
+				String[] rowR = textR.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
 
-				ret.add(new Prompt(df.parse(row[0]).getTime(), row[6].contains("Never"),
+				ret.add(new Prompt(df.parse(row[0]).getTime(), row[6].contains("Completed"),
 						rowR.length > 11 ? rowR[11] : "",
 						rowR.length > 8 ? rowR[8] : ""));
 
