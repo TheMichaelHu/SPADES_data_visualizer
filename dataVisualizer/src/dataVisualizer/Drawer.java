@@ -151,10 +151,12 @@ class Drawer extends JPanel {
 		}
 
 		int count = 0;
-		for (String sensorId : Visualizer.sensorLocations.keySet()) {
-			graphPoints = dataToPoints(Visualizer.sensorData.get(sensorId).get(this.currentDay), xRange, yRange);
-			drawLinePlot(graphPoints, g2, xStart, yStart, giveColor(Visualizer.sensorLocations.get(sensorId), ++count,
-					.9, LegendType.DATA));
+		if(Arrays.asList(Utils.SENSORS).contains("actigraph")) {
+			for (String sensorId : Visualizer.sensorLocations.keySet()) {
+				graphPoints = dataToPoints(Visualizer.sensorData.get(sensorId).get(this.currentDay), xRange, yRange);
+				drawLinePlot(graphPoints, g2, xStart, yStart, giveColor(Visualizer.sensorLocations.get(sensorId), ++count,
+						.9, LegendType.DATA));
+			}
 		}
 
 		Stroke dashed = new BasicStroke(GRAPH_POINT_WIDTH, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
@@ -272,8 +274,8 @@ class Drawer extends JPanel {
 					(long)(Utils.CHUNK * 60 * 60 * 1000), 0, (WIDTH - 2 * PADDING), HEIGHT).x -
 					scalePoint(Visualizer.data.get(this.currentDay).date, 0, (WIDTH - 2 * PADDING), HEIGHT).x;
 
-			// chunk is in hours, who designed this?
-			if(point1.x - point0.x <= scaledChunk) {
+			// chunk is in hours, who designed this? +1 because inclusive
+			if(point1.x - point0.x <= scaledChunk + 1) {
 				g2.setStroke(new BasicStroke(GRAPH_POINT_WIDTH));
 				g2.drawLine(point0.x + xOffset, point0.y + yOffset,
 						point1.x + xOffset, point1.y + yOffset);
